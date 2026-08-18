@@ -1,0 +1,1336 @@
+﻿===== C:\Users\admin\lanna-tea-app\src\app\admin\dashboard\page.tsx =====
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { InventoryItem } from '@/types/admin.types';
+import { InventoryTable } from '@/components/admin/InventoryTable';
+
+export default function AdminDashboardPage() {
+  const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // เธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธ API เธซเธฅเธฑเธเธเนเธฒเธเธ•เธญเธเน€เธเธดเธ”เธซเธเนเธฒเน€เธงเนเธ
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch('/api/admin/inventory');
+        const data = await response.json();
+        
+        if (data.success) {
+          setInventoryData(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch inventory:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#FDFCF9] font-sans">
+      {/* Admin Top Navigation */}
+      <nav className="bg-[#2C3E50] text-[#F9F6F0] p-4 shadow-md">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h1 className="font-serif tracking-widest text-lg">Lanna & Tribal | <span className="text-[#D4C4A8]">Operation Center</span></h1>
+          <div className="text-xs tracking-wider opacity-80 uppercase">Director Dashboard</div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto p-8">
+        <header className="mb-8 flex justify-between items-end">
+          <div>
+            <h2 className="text-3xl font-serif text-[#2C3E50] mb-2">Predictive Inventory</h2>
+            <p className="text-[#8B7355]">เธฃเธฐเธเธเธงเธดเน€เธเธฃเธฒเธฐเธซเนเนเธฅเธฐเนเธเนเธเน€เธ•เธทเธญเธเธชเธ–เธฒเธเธฐเธงเธฑเธ•เธ–เธธเธ”เธดเธเธฅเนเธงเธเธซเธเนเธฒ</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 border border-[#8B7355] text-[#8B7355] hover:bg-[#8B7355] hover:text-white transition-colors text-sm rounded-sm"
+          >
+            เธฃเธตเน€เธเธฃเธเธเนเธญเธกเธนเธฅ
+          </button>
+        </header>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+            <div className="w-10 h-10 border-4 border-[#EBE5D9] border-t-[#2C3E50] rounded-full animate-spin mb-4"></div>
+            <p className="text-[#8B7355]">เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเธชเธ•เนเธญเธ...</p>
+          </div>
+        ) : (
+          <div className="animate-fade-in-up">
+            <InventoryTable data={inventoryData} />
+            
+            {/* เธชเธฃเธธเธเธเนเธญเธกเธนเธฅเธชเธณเธซเธฃเธฑเธเธเธนเนเธเธฃเธดเธซเธฒเธฃ */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 border border-[#EBE5D9] border-l-4 border-l-red-500 shadow-sm">
+                <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-1">Critical Items</h4>
+                <p className="text-2xl font-serif text-red-600">
+                  {inventoryData.filter(item => item.status === 'CRITICAL').length} <span className="text-sm font-sans text-gray-400">เธฃเธฒเธขเธเธฒเธฃ</span>
+                </p>
+              </div>
+              <div className="bg-white p-6 border border-[#EBE5D9] border-l-4 border-l-amber-500 shadow-sm">
+                <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-1">Warning Items</h4>
+                <p className="text-2xl font-serif text-amber-600">
+                  {inventoryData.filter(item => item.status === 'WARNING').length} <span className="text-sm font-sans text-gray-400">เธฃเธฒเธขเธเธฒเธฃ</span>
+                </p>
+              </div>
+              <div className="bg-white p-6 border border-[#EBE5D9] border-l-4 border-l-emerald-500 shadow-sm">
+                <h4 className="text-xs text-gray-500 uppercase tracking-wider mb-1">Healthy Items</h4>
+                <p className="text-2xl font-serif text-emerald-600">
+                  {inventoryData.filter(item => item.status === 'HEALTHY').length} <span className="text-sm font-sans text-gray-400">เธฃเธฒเธขเธเธฒเธฃ</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\app\api\admin\inventory\route.ts =====
+import { NextResponse } from 'next/server';
+import { InventoryService } from '@/services/inventory.service';
+import { Logger } from '@/utils/logger';
+
+export async function GET() {
+  try {
+    // 1. เน€เธฃเธตเธขเธเนเธเนเธเธฒเธเธชเธกเธญเธเธเธฅ
+    const service = new InventoryService();
+    
+    // 2. เธชเธฑเนเธเนเธซเนเธเธณเธเธงเธ“ Predictive Data
+    const data = service.getPredictiveInventory();
+    
+    Logger.info('API/Admin/Inventory', { message: 'Fetched predictive inventory successfully' });
+
+    // 3. เธชเนเธเธเนเธญเธกเธนเธฅเธเธฅเธฑเธเนเธเนเธซเนเธซเธเนเธฒ Dashboard
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    Logger.error('API/Admin/Inventory', { 
+      message: 'Failed to fetch inventory', 
+      details: error instanceof Error ? error.message : String(error) 
+    });
+    
+    return NextResponse.json(
+      { success: false, error: 'Internal Server Error' }, 
+      { status: 500 }
+    );
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\app\api\recommend\route.ts =====
+import { NextResponse } from 'next/server';
+import { RecommendationService } from '@/services/recommendation.service';
+import { parseUserAssessmentPayload } from '@/validators/assessment.validator';
+import { Logger } from '@/utils/logger';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const payload = parseUserAssessmentPayload(body);
+    
+    // เนเธเน Error 1: เธซเนเธญเธเนเธญเธเธงเธฒเธกเนเธฅเธฐ payload เนเธซเนเธญเธขเธนเนเนเธเธฃเธนเธเนเธเธ Object (Record)
+    Logger.info('API/Recommend', { 
+      message: 'Validated payload strictly', 
+      data: payload 
+    });
+
+    const service = new RecommendationService();
+    const topTeas = service.calculateTopTeas(payload);
+
+    return NextResponse.json({ success: true, data: topTeas });
+    
+  } catch (error) {
+    // เนเธเน Error 2: เธ”เธฑเธเธเธฑเธ error เธ—เธตเนเน€เธเนเธ unknown เนเธฅเธฐเนเธเธฅเธเน€เธเนเธ Object เธ—เธตเนเธญเนเธฒเธเธเนเธฒเนเธ”เน
+    Logger.error('API/Recommend', 'Failed to process recommendation', { 
+      details: error instanceof Error ? error.message : String(error) 
+    });
+    
+    return NextResponse.json(
+      { success: false, error: 'Internal Server Error or Validation Failed' },
+      { status: 400 }
+    );
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\app\api\sommelier\route.ts =====
+import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Logger } from '@/utils/logger';
+
+const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+
+export async function POST(request: Request) {
+  if (!genAI) {
+    Logger.error('API/Sommelier', { message: 'API key is missing from environment variables' });
+    return NextResponse.json({ success: false, error: 'System Configuration Error: Missing API Key' }, { status: 500 });
+  }
+
+  try {
+    const body = await request.json();
+    const { prompt } = body;
+
+    if (!prompt) {
+      return NextResponse.json({ success: false, error: 'Prompt is required' }, { status: 400 });
+    }
+
+    // ๐จ เธเธธเธ”เธ—เธตเนเนเธเนเนเธ: เธญเธฑเธเน€เธเธฃเธ”เธเนเธฒเธกเธเธฑเนเธเธกเธฒเนเธเน Gemini 3.5 Flash เธ•เธฒเธกเธ•เธฒเธฃเธฒเธเธฅเนเธฒเธชเธธเธ”เธเธญเธ Google!
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+
+    const systemPrompt = `เธเธธเธ“เธเธทเธญ "AI Tea Sommelier" เธเธฃเธฐเธเธณเธฃเนเธฒเธ Lanna & Tribal High Society Tea House 
+เธเธธเธ“เน€เธเนเธเธเธนเนเน€เธเธตเนเธขเธงเธเธฒเธเธฃเธฐเธ”เธฑเธเธชเธนเธเธ”เนเธฒเธเธเธฒเธฅเนเธฒเธเธเธฒเนเธฅเธฐเธเธฒเธเธเน€เธเนเธฒเธ—เธฒเธเธ เธฒเธเน€เธซเธเธทเธญเธเธญเธเนเธ—เธข
+เธเธธเธเธฅเธดเธเธ เธฒเธ: เธชเธธเธ เธฒเธ เธเธธเนเธกเธเธงเธฅ เธกเธตเธเธงเธฒเธกเธฃเธนเนเธฅเธถเธเธเธถเนเธ เนเธเนเธ เธฒเธฉเธฒเธ—เธตเนเธชเธฅเธฐเธชเธฅเธงเธขเนเธฅเธฐเนเธซเนเน€เธเธตเธขเธฃเธ•เธดเธฅเธนเธเธเนเธฒ (Sophisticated & Artisanal)
+เธซเธเนเธฒเธ—เธตเน: เนเธเธฐเธเธณเธเธฒ 1 เธเธเธดเธ”เธ—เธตเนเธ•เธฃเธเธเธฑเธเธเธงเธฒเธกเธฃเธนเนเธชเธถเธเธซเธฃเธทเธญเธเธงเธฒเธกเธ•เนเธญเธเธเธฒเธฃเธ—เธตเนเธฅเธนเธเธเนเธฒเธเธดเธกเธเนเธกเธฒเธกเธฒเธเธ—เธตเนเธชเธธเธ” เธเธฃเนเธญเธกเธเธญเธเน€เธซเธ•เธธเธเธฅเธชเธฑเนเธเน เนเธเธ Storytelling
+เธเนเธญเธซเนเธฒเธก: เธซเนเธฒเธกเนเธเนเธ เธฒเธฉเธฒเธซเธธเนเธเธขเธเธ•เน เธซเนเธฒเธกเนเธเธฐเธเธณเธเธฒเธ•เธฐเธงเธฑเธเธ•เธ (เน€เธเนเธ เน€เธญเธดเธฃเนเธฅเน€เธเธฃเธขเน เธญเธดเธเธฅเธดเธเน€เธเธฃเธเธเธฒเธชเธ•เน) เนเธซเนเนเธเธฐเธเธณเน€เธเธเธฒเธฐเธงเธฑเธ•เธ–เธธเธ”เธดเธเธ—เนเธญเธเธ–เธดเนเธเนเธ—เธขเน€เธ—เนเธฒเธเธฑเนเธ`;
+
+    const fullPrompt = `${systemPrompt}\n\nเธเนเธญเธเธงเธฒเธกเธเธฒเธเธฅเธนเธเธเนเธฒ: "${prompt}"`;
+
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    const aiText = response.text();
+
+    Logger.info('API/Sommelier', { message: 'AI generated response successfully via gemini-3.5-flash' });
+
+    return NextResponse.json({ success: true, data: aiText });
+
+  } catch (error) {
+    Logger.error('API/Sommelier', { 
+      message: 'Failed to generate AI response', 
+      details: error instanceof Error ? error.message : String(error) 
+    });
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: `AI Error: ${error instanceof Error ? error.message : 'Unknown'}` 
+      }, 
+      { status: 500 }
+    );
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\app\layout.tsx =====
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Lanna Tea",
+  description: "Discover teas from Northern Thailand, matched to your taste.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\app\page.tsx =====
+import { RecommendationForm } from "@/components/RecommendationForm";
+
+export default function Home() {
+  return (
+    <div className="flex min-h-full flex-col bg-zinc-50 dark:bg-black">
+      <main className="flex flex-1 flex-col py-12">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Lanna Tea
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Discover teas from Northern Thailand, matched to your taste.
+          </p>
+        </div>
+        <RecommendationForm />
+      </main>
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\components\admin\InventoryTable.tsx =====
+import React from 'react';
+import { InventoryItem } from '@/types/admin.types';
+
+interface InventoryTableProps {
+  data: InventoryItem[];
+}
+
+export function InventoryTable({ data }: InventoryTableProps) {
+  // เธเธฑเธเธเนเธเธฑเธเน€เธฅเธทเธญเธเธชเธต Badge เธ•เธฒเธกเธเธงเธฒเธกเธงเธดเธเธคเธ•เธเธญเธเธชเธ•เนเธญเธ
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'CRITICAL':
+        return <span className="px-3 py-1 bg-red-100 text-red-700 border border-red-200 text-xs tracking-wider rounded-full font-bold animate-pulse">CRITICAL (เธ”เนเธงเธ)</span>;
+      case 'WARNING':
+        return <span className="px-3 py-1 bg-amber-100 text-amber-700 border border-amber-200 text-xs tracking-wider rounded-full font-semibold">WARNING (เน€เธเนเธฒเธฃเธฐเธงเธฑเธ)</span>;
+      default:
+        return <span className="px-3 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs tracking-wider rounded-full">HEALTHY (เธเธเธ•เธด)</span>;
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto bg-white border border-[#EBE5D9] shadow-sm rounded-sm">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-[#FDFCF9] border-b border-[#EBE5D9] text-[#8B7355] text-xs uppercase tracking-widest">
+            <th className="p-4 font-medium">เธฃเธซเธฑเธช / เธงเธฑเธ•เธ–เธธเธ”เธดเธ</th>
+            <th className="p-4 font-medium">เธซเธกเธงเธ”เธซเธกเธนเน</th>
+            <th className="p-4 font-medium text-right">เธเธเน€เธซเธฅเธทเธญ</th>
+            <th className="p-4 font-medium text-right">เนเธเนเน€เธเธฅเธตเนเธข/เธงเธฑเธ</th>
+            <th className="p-4 font-medium text-center">เธเธฒเธ”เธเธฒเธฃเธ“เน (เธงเธฑเธเธเธฐเธซเธกเธ”)</th>
+            <th className="p-4 font-medium text-center">เธชเธ–เธฒเธเธฐ</th>
+          </tr>
+        </thead>
+        <tbody className="text-sm text-[#5C4D3C]">
+          {data.map((item) => (
+            <tr key={item.id} className="border-b border-[#EBE5D9] hover:bg-[#F9F6F0] transition-colors">
+              <td className="p-4">
+                <div className="font-serif text-[#2C3E50] text-base">{item.name}</div>
+                <div className="text-xs text-[#8B7355] mt-1">{item.id}</div>
+              </td>
+              <td className="p-4">{item.category}</td>
+              <td className="p-4 text-right font-medium">
+                {item.remainingQuantity.toLocaleString()} <span className="text-xs text-gray-400 font-normal">{item.unit}</span>
+              </td>
+              <td className="p-4 text-right">
+                {item.averageDailyUsage} <span className="text-xs text-gray-400">{item.unit}</span>
+              </td>
+              <td className="p-4 text-center">
+                <span className={`text-lg font-serif ${item.estimatedDaysLeft <= 7 ? 'text-red-600 font-bold' : 'text-[#2C3E50]'}`}>
+                  {item.estimatedDaysLeft}
+                </span>
+              </td>
+              <td className="p-4 text-center">
+                {getStatusBadge(item.status)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\components\RecommendationForm.tsx =====
+'use client';
+
+import React, { useState } from 'react';
+import { TeaProduct, UserAssessmentPayload } from '@/types/tea.types';
+import { TeaDetailsModal } from './TeaDetailsModal';
+import { useGuestProfile } from '@/hooks/useGuestProfile';
+import { UpSaleRecommendation } from './UpSaleRecommendation';
+
+export function RecommendationForm() {
+  const { saveProfile } = useGuestProfile();
+  
+  const [loading, setLoading] = useState<boolean>(false);
+  const [results, setResults] = useState<TeaProduct[]>([]);
+  const [selectedTea, setSelectedTea] = useState<TeaProduct | null>(null);
+  
+  const [assessment, setAssessment] = useState<UserAssessmentPayload>({
+    mood: 1, taste: 1, purpose: 1
+  });
+
+  const [showDeepPath, setShowDeepPath] = useState<boolean>(false);
+  const [deepPrompt, setDeepPrompt] = useState<string>('');
+  const [isDeepLoading, setIsDeepLoading] = useState<boolean>(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null); // เน€เธเธดเนเธก State เธฃเธฑเธเธเธณเธ•เธญเธ AI
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setResults([]);
+    setShowDeepPath(false);
+    setAiResponse(null);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      const response = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assessment),
+      });
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        setResults(data.data);
+        saveProfile(assessment, data.data[0].id);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // เธเธฑเธเธเนเธเธฑเธเธขเธดเธ API เนเธเธซเธฒ AI Sommelier เธ•เธฑเธงเธเธฃเธดเธ
+  const handleDeepSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deepPrompt.trim()) return;
+    
+    setIsDeepLoading(true);
+    setAiResponse(null);
+    
+    try {
+      const response = await fetch('/api/sommelier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: deepPrompt }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAiResponse(data.data); // เธเธณเธเธณเธ•เธญเธ AI เธกเธฒเน€เธเนเธเนเธงเนเนเธเธงเน
+        setDeepPrompt('');
+      } else {
+        console.error('AI Error:', data.error);
+      }
+    } catch (error) {
+      console.error('Error in Deep Personalization:', error);
+    } finally {
+      setIsDeepLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F9F6F0] text-[#3E3124] p-8 font-serif selection:bg-amber-200">
+      <div className="max-w-3xl mx-auto">
+        
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-light tracking-wide text-[#2C3E50] mb-4">
+            Lanna & Tribal
+          </h1>
+          <p className="text-[#8B7355] text-lg italic">
+            "เธเนเธเธเธเธเธฒเธ—เธตเนเธชเธฐเธ—เนเธญเธเธ•เธฑเธงเธ•เธเนเธฅเธฐเธญเธฒเธฃเธกเธ“เนเธเธญเธเธเธธเธ“เนเธเธงเธฑเธเธเธตเน"
+          </p>
+          <div className="w-24 h-[1px] bg-[#D4C4A8] mx-auto mt-6"></div>
+        </div>
+
+        {!loading && results.length === 0 && (
+          <div className="bg-white p-8 md:p-12 rounded-sm shadow-sm border border-[#EBE5D9] relative overflow-hidden animate-fade-in">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8B7355] via-[#D4C4A8] to-[#8B7355]"></div>
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-3">
+                <label className="block text-lg text-[#2C3E50]">1. เธญเธฒเธฃเธกเธ“เนเธเธญเธเธเธธเธ“เนเธเธเธ“เธฐเธเธตเน?</label>
+                <select 
+                  className="w-full p-3 bg-[#FDFCF9] border border-[#EBE5D9] rounded-none focus:outline-none focus:border-[#8B7355] text-[#5C4D3C] appearance-none"
+                  value={assessment.mood}
+                  onChange={(e) => setAssessment({...assessment, mood: Number(e.target.value)})}
+                >
+                  <option value={1}>เธ•เนเธญเธเธเธฒเธฃเธเธงเธฒเธกเธชเธเธเนเธฅเธฐเธเนเธญเธเธเธฅเธฒเธขเธเธฒเธเธเธงเธฒเธกเธงเธธเนเธเธงเธฒเธข</option>
+                  <option value={2}>เธ•เนเธญเธเธเธฒเธฃเธเธงเธฒเธกเธชเธ”เธเธทเนเธเนเธฅเธฐเธเธฅเธฑเธเธเธฒเธเนเธเธเธฒเธฃเนเธเธเธฑเธช</option>
+                  <option value={3}>เธฃเธนเนเธชเธถเธเน€เธเธดเธเธเธฒเธเนเธฅเธฐเธ•เนเธญเธเธเธฒเธฃเธ”เธทเนเธกเธ”เนเธณเธเธฑเธเธชเธธเธเธ—เธฃเธตเธขเธ เธฒเธ</option>
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-lg text-[#2C3E50]">2. เนเธ—เธเธฃเธชเธเธฒเธ•เธดเธ—เธตเนเธเธฃเธฒเธฃเธ–เธเธฒ?</label>
+                <select 
+                  className="w-full p-3 bg-[#FDFCF9] border border-[#EBE5D9] rounded-none focus:outline-none focus:border-[#8B7355] text-[#5C4D3C] appearance-none"
+                  value={assessment.taste}
+                  onChange={(e) => setAssessment({...assessment, taste: Number(e.target.value)})}
+                >
+                  <option value={1}>เธเธธเนเธกเธเธงเธฅ เธซเธญเธกเธเธฅเธดเนเธเธ”เธญเธเนเธกเนเนเธฅเธฐเธเธฃเธฃเธกเธเธฒเธ•เธด</option>
+                  <option value={2}>เน€เธเนเธกเธเนเธ เธฅเธธเนเธกเธฅเธถเธ เธกเธตเธกเธดเธ•เธดเธเธญเธเน€เธเธฃเธทเนเธญเธเน€เธ—เธจ</option>
+                  <option value={3}>เธชเธ”เธเธทเนเธ เธญเธกเน€เธเธฃเธตเนเธขเธงเธญเธกเธซเธงเธฒเธเนเธเธเธเธฅเนเธกเนเธเนเธฒ</option>
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-lg text-[#2C3E50]">3. เธชเธดเนเธเธ—เธตเนเธญเธขเธฒเธเนเธซเนเธเธฒเนเธเนเธงเธเธตเนเธกเธญเธเนเธซเน?</label>
+                <select 
+                  className="w-full p-3 bg-[#FDFCF9] border border-[#EBE5D9] rounded-none focus:outline-none focus:border-[#8B7355] text-[#5C4D3C] appearance-none"
+                  value={assessment.purpose}
+                  onChange={(e) => setAssessment({...assessment, purpose: Number(e.target.value)})}
+                >
+                  <option value={1}>เธเธณเธฃเธธเธเธเธดเธงเธเธฃเธฃเธ“เนเธฅเธฐเธเธฃเธฑเธเธชเธกเธ”เธธเธฅเธฃเนเธฒเธเธเธฒเธข</option>
+                  <option value={2}>เธเนเธงเธขเน€เธฃเธทเนเธญเธเธฃเธฐเธเธเธขเนเธญเธขเธญเธฒเธซเธฒเธฃเนเธฅเธฐเธเธงเธฒเธกเธญเธเธญเธธเนเธ</option>
+                  <option value={3}>เธเธถเธกเธเธฑเธเน€เธฃเธทเนเธญเธเธฃเธฒเธงเนเธฅเธฐเธงเธฑเธ’เธเธเธฃเธฃเธกเธ—เนเธญเธเธ–เธดเนเธ</option>
+                </select>
+              </div>
+
+              <button type="submit" className="w-full mt-6 py-4 bg-[#2C3E50] text-[#F9F6F0] tracking-widest uppercase text-sm hover:bg-[#1A252F] transition-colors">
+                เธฃเธฑเธเธเธฒเธฃเธฃเธฑเธเธชเธฃเธฃเธเนเน€เธกเธเธนเธเธฒ
+              </button>
+            </form>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+            <div className="w-16 h-16 border-4 border-[#EBE5D9] border-t-[#8B7355] rounded-full animate-spin mb-6"></div>
+            <h3 className="text-2xl font-serif text-[#2C3E50] mb-2">เธเธณเธฅเธฑเธเธฃเธฑเธเธชเธฃเธฃเธเนเน€เธกเธเธนเธเธฒ...</h3>
+            <p className="text-[#8B7355] italic">เธงเธดเน€เธเธฃเธฒเธฐเธซเนเธเธงเธฒเธกเน€เธเนเธฒเธเธฑเธเนเธ”เนเธเธญเธเธฃเธชเธเธฒเธ•เธดเนเธฅเธฐเธญเธฒเธฃเธกเธ“เน</p>
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <div className="mt-10 animate-fade-in-up">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-serif text-[#2C3E50] mb-3">Lanna Tea Selections</h2>
+              <p className="text-[#8B7355] text-sm tracking-widest uppercase">เธเธฒเธ—เธตเนเธฃเธฑเธเธชเธฃเธฃเธเนเธกเธฒเน€เธเธทเนเธญเธเธธเธ“เนเธ”เธขเน€เธเธเธฒเธฐ</p>
+              <div className="w-16 h-[1px] bg-[#8B7355] mx-auto mt-6"></div>
+            </div>
+            
+            <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+              {results.map((tea, index) => (
+                <div key={tea.id} className="bg-transparent border border-[#D4C4A8] p-8 flex flex-col md:flex-row items-start md:items-center justify-between group hover:bg-[#FDFCF9] transition-all duration-300 relative overflow-hidden">
+                  <div className="flex-1 pr-6">
+                    <div className="flex items-center gap-4 mb-2">
+                      <span className="text-[#8B7355] font-serif italic text-lg">No. {index + 1}</span>
+                      <h3 className="text-2xl font-serif text-[#2C3E50]">{tea.name}</h3>
+                    </div>
+                    <p className="text-[#5C4D3C] text-sm leading-relaxed mt-3">
+                      {tea.description}
+                    </p>
+                  </div>
+                  
+                  <div className="mt-6 md:mt-0 md:pl-6 md:border-l md:border-[#EBE5D9] flex flex-col items-start md:items-end min-w-[120px]">
+                    <span className="text-xs text-[#8B7355] tracking-widest uppercase mb-1">Match Rate</span>
+                    <span className="text-xl text-[#2C3E50] font-serif">{Math.floor(99 - (index * 4.5))}%</span>
+                    <button 
+                      onClick={() => setSelectedTea(tea)}
+                      className="mt-4 text-xs text-[#2C3E50] border-b border-[#2C3E50] pb-1 hover:text-[#8B7355] hover:border-[#8B7355] transition-colors uppercase tracking-wider"
+                    >
+                      เธ”เธนเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <UpSaleRecommendation />
+
+            {/* เธชเนเธงเธ Deep Path เธ—เธตเนเธญเธฑเธเน€เธ”เธ•เนเธซเนเนเธชเธ”เธเธเธฅเธฅเธฑเธเธเนเธเธฒเธ AI */}
+            {!showDeepPath && !aiResponse ? (
+              <div className="mt-8 text-center animate-fade-in">
+                <button 
+                  onClick={() => setShowDeepPath(true)}
+                  className="text-[#8B7355] text-sm underline hover:text-[#2C3E50] transition-colors italic"
+                >
+                  เนเธกเนเธเธเธเธฒเธ—เธตเนเธ–เธนเธเนเธ? เธเธญเธเธณเนเธเธฐเธเธณเน€เธเธดเธเธฅเธถเธ (Deep Personalization)
+                </button>
+              </div>
+            ) : null}
+
+            {/* เธเธญเธฃเนเธกเธฃเธฑเธเธเนเธญเธกเธนเธฅ AI */}
+            {showDeepPath && !aiResponse && (
+              <div className="mt-12 bg-white p-8 border border-[#D4C4A8] animate-fade-in-up">
+                <h3 className="text-2xl font-serif text-[#2C3E50] mb-3">AI Tea Sommelier</h3>
+                <p className="text-[#5C4D3C] text-sm mb-6">
+                  เธเธญเธเน€เธฅเนเธฒเธเธงเธฒเธกเธฃเธนเนเธชเธถเธเธเธญเธเธเธธเธ“เธญเธขเนเธฒเธเธญเธดเธชเธฃเธฐ เน€เธเธทเนเธญเนเธซเนเธเธนเนเน€เธเธตเนเธขเธงเธเธฒเธ AI เธฃเธฑเธเธชเธฃเธฃเธเนเธเธฒเธ—เธตเนเธ•เธญเธเนเธเธ—เธขเนเธเธธเธ“เธ—เธตเนเธชเธธเธ”
+                </p>
+                <form onSubmit={handleDeepSubmit}>
+                  <textarea
+                    rows={4}
+                    className="w-full p-4 bg-[#FDFCF9] border border-[#EBE5D9] focus:outline-none focus:border-[#8B7355] text-[#5C4D3C] resize-none mb-4"
+                    placeholder="เน€เธเนเธ เธงเธฑเธเธเธตเนเธเธฃเธฐเธเธธเธกเธซเธเธฑเธเธกเธฒเธ เธฃเธนเนเธชเธถเธเน€เธซเธเธทเนเธญเธขเธฅเนเธฒ เธญเธขเธฒเธเนเธ”เนเธเธฒเธ—เธตเนเธ”เธทเนเธกเนเธฅเนเธงเธ•เธฒเธชเธงเนเธฒเธเนเธ•เนเนเธกเนเธ—เธณเนเธซเนเนเธเธชเธฑเนเธ..."
+                    value={deepPrompt}
+                    onChange={(e) => setDeepPrompt(e.target.value)}
+                  />
+                  <div className="flex gap-4">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowDeepPath(false)}
+                      className="px-6 py-3 border border-[#2C3E50] text-[#2C3E50] uppercase tracking-widest text-xs hover:bg-[#F9F6F0] transition-colors"
+                    >
+                      เธขเธเน€เธฅเธดเธ
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isDeepLoading || !deepPrompt.trim()}
+                      className="flex-1 px-6 py-3 bg-[#2C3E50] text-[#F9F6F0] uppercase tracking-widest text-xs hover:bg-[#1A252F] transition-colors disabled:opacity-50"
+                    >
+                      {isDeepLoading ? 'เธเธณเธฅเธฑเธเธเธฃเธถเธเธฉเธฒเธเธนเนเน€เธเธตเนเธขเธงเธเธฒเธ...' : 'เธเธญเธเธณเนเธเธฐเธเธณเธเธฒเธ AI'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* เนเธชเธ”เธเธเธณเธ•เธญเธเธ—เธตเนเนเธ”เนเธเธฒเธ AI */}
+            {aiResponse && (
+              <div className="mt-12 bg-[#2C3E50] text-[#F9F6F0] p-8 md:p-10 relative overflow-hidden animate-fade-in-up">
+                <div className="absolute top-0 right-0 w-40 h-40 border border-[#8B7355] rounded-full opacity-20 -mr-10 -mt-10"></div>
+                <h3 className="text-2xl font-serif text-[#D4C4A8] mb-4">The Sommelier's Recommendation</h3>
+                <div className="prose prose-invert prose-p:text-[#EBE5D9] prose-p:leading-relaxed max-w-none">
+                  {/* เนเธชเธ”เธเธเนเธญเธเธงเธฒเธกเธ—เธตเนเนเธ”เนเธเธฒเธ AI เนเธ”เธขเธเธฑเธ”เธเธฒเธฃเธเธฃเธฃเธ—เธฑเธ”เนเธซเธกเนเนเธซเนเธชเธงเธขเธเธฒเธก */}
+                  {aiResponse.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2">{line}</p>
+                  ))}
+                </div>
+                <div className="mt-8 text-center">
+                   <button 
+                    onClick={() => { setAiResponse(null); setShowDeepPath(true); setDeepPrompt(''); }}
+                    className="text-[#D4C4A8] text-sm underline hover:text-white transition-colors"
+                  >
+                    เธเธฃเธถเธเธฉเธฒเน€เธฃเธทเนเธญเธเธญเธทเนเธเน€เธเธดเนเธกเน€เธ•เธดเธก
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-12 flex justify-center gap-4">
+              <button onClick={() => setResults([])} className="px-8 py-3 border border-[#2C3E50] text-[#2C3E50] uppercase tracking-widest text-xs hover:bg-[#2C3E50] hover:text-[#F9F6F0] transition-colors">
+                เน€เธฃเธดเนเธกเธเธฃเธฐเน€เธกเธดเธเนเธซเธกเน
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <TeaDetailsModal 
+        isOpen={selectedTea !== null} 
+        onClose={() => setSelectedTea(null)} 
+        tea={selectedTea} 
+      />
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\components\TeaDetailsModal.tsx =====
+import React from 'react';
+import { TeaProduct } from '@/types/tea.types';
+
+// เธเธฑเธเธเธฑเธ Strict Typing เธชเธณเธซเธฃเธฑเธ Props
+interface TeaDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tea: TeaProduct | null;
+}
+
+export function TeaDetailsModal({ isOpen, onClose, tea }: TeaDetailsModalProps) {
+  if (!isOpen || !tea) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C3E50]/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-[#F9F6F0] w-full max-w-lg border border-[#D4C4A8] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Modal Header */}
+        <div className="flex justify-between items-center p-6 border-b border-[#EBE5D9]">
+          <h3 className="font-serif text-2xl text-[#2C3E50]">เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฒ</h3>
+          <button 
+            onClick={onClose}
+            className="text-[#8B7355] hover:text-[#2C3E50] transition-colors text-xl font-light"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto">
+          <h4 className="font-serif text-3xl text-[#2C3E50] mb-2">{tea.name}</h4>
+          <p className="text-[#8B7355] text-sm tracking-widest uppercase mb-6">Signature Blend</p>
+          
+          <p className="text-[#5C4D3C] leading-relaxed mb-8">
+            {tea.description}
+            {/* เธเนเธญเธเธงเธฒเธกเธเธณเธฅเธญเธ Storytelling (เธฃเธญเธ•เนเธญ API Google AI Studio เธเธญเธเธเธฃเธดเธ) */}
+            <span className="block mt-4 italic text-[#8B7355]">
+              "เธเธฒเธ•เธฑเธงเธเธตเนเธ–เธนเธเธฃเธฑเธเธชเธฃเธฃเธเนเธเธถเนเธเธเธฒเธเธงเธฑเธ•เธ–เธธเธ”เธดเธเธ—เนเธญเธเธ–เธดเนเธเธ•เธญเธเน€เธซเธเธทเธญเธเธญเธเนเธ—เธข เธเนเธฒเธเธเธฃเธฃเธกเธงเธดเธเธตเธเธฑเนเธงเธญเธเธญเธขเนเธฒเธเธเธดเธ–เธตเธเธดเธ–เธฑเธ เน€เธเธทเนเธญเธ”เธถเธเธฃเธชเธเธฒเธ•เธดเธ—เธตเนเธเนเธญเธเธญเธขเธนเนเธญเธญเธเธกเธฒ เธเธชเธฒเธเธเธฑเธเธเธงเธฒเธกเธ•เนเธญเธเธเธฒเธฃเธเธญเธเธเธธเธ“เนเธเธงเธฑเธเธเธตเนเนเธ”เนเธญเธขเนเธฒเธเธฅเธเธ•เธฑเธง"
+            </span>
+          </p>
+
+          <div className="bg-white p-4 border border-[#EBE5D9]">
+            <h5 className="text-[#2C3E50] font-bold text-sm mb-3 uppercase tracking-wider">Tasting Notes Matrix</h5>
+            <ul className="space-y-2 text-sm text-[#5C4D3C]">
+              <li className="flex justify-between"><span>เธเธงเธฒเธกเธเนเธญเธเธเธฅเธฒเธข (Relaxation):</span> <span>{tea.matrix.relaxation * 10}%</span></li>
+              <li className="flex justify-between"><span>เธเธณเธฃเธธเธเธชเธธเธเธ เธฒเธ (Health & Beauty):</span> <span>{tea.matrix.healthBeauty * 10}%</span></li>
+              <li className="flex justify-between"><span>เธเธงเธฒเธกเน€เธเนเธกเธเนเธ (Flavor Boldness):</span> <span>{tea.matrix.flavorBoldness * 10}%</span></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-6 bg-white border-t border-[#EBE5D9] flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-[#2C3E50] text-[#F9F6F0] uppercase tracking-widest text-xs hover:bg-[#1A252F] transition-colors"
+          >
+            เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\components\UpSaleRecommendation.tsx =====
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useGuestProfile } from '@/hooks/useGuestProfile';
+import { teaPairings, PairingItem } from '@/data/pairings';
+
+export function UpSaleRecommendation() {
+  const { profile, isLoaded } = useGuestProfile();
+  const [pairing, setPairing] = useState<PairingItem | null>(null);
+
+  // เธ”เธถเธเธเนเธญเธกเธนเธฅเธชเธดเธเธเนเธฒเธ—เธตเนเธ•เธฃเธเธเธฑเธเธเธงเธฒเธกเธเธณเธเธญเธเธฃเธฐเธเธ
+  useEffect(() => {
+    if (isLoaded && profile?.preferredTeaId) {
+      const matchedPairing = teaPairings.find(p => p.targetTeaId === profile.preferredTeaId);
+      setPairing(matchedPairing || null);
+    }
+  }, [profile, isLoaded]);
+
+  // เธ–เนเธฒเธขเธฑเธเนเธซเธฅเธ”เนเธกเนเน€เธชเธฃเนเธ เธซเธฃเธทเธญเนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเธ—เธตเนเธ•เธฃเธเธเธฑเธ เนเธซเนเธเนเธญเธ Component เธเธตเนเนเธเน€เธฅเธข
+  if (!pairing) return null;
+
+  return (
+    <div className="mt-16 bg-[#FDFCF9] border border-[#8B7355] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between relative overflow-hidden animate-fade-in-up">
+      {/* Decorative Background Texture */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4C4A8] opacity-10 rounded-full -mr-16 -mt-16"></div>
+      
+      <div className="flex-1 pr-0 md:pr-8 text-center md:text-left z-10">
+        <h4 className="text-xs text-[#8B7355] tracking-widest uppercase mb-2">Curated Pairing</h4>
+        <h3 className="text-2xl font-serif text-[#2C3E50] mb-2">
+          เน€เธ•เธดเธกเน€เธ•เนเธกเธชเธธเธเธ—เธฃเธตเธขเธ เธฒเธเธ”เนเธงเธข "{pairing.name}"
+        </h3>
+        <p className="text-[#5C4D3C] text-sm leading-relaxed">
+          {pairing.description}
+        </p>
+      </div>
+
+      <div className="mt-6 md:mt-0 flex flex-col items-center md:items-end z-10 border-t md:border-t-0 md:border-l border-[#EBE5D9] pt-6 md:pt-0 md:pl-8 min-w-[150px]">
+        <span className="text-[#2C3E50] font-serif text-2xl mb-3">
+          เธฟ{pairing.price}
+        </span>
+        <button className="w-full px-6 py-2 bg-transparent border border-[#2C3E50] text-[#2C3E50] text-xs uppercase tracking-widest hover:bg-[#2C3E50] hover:text-[#F9F6F0] transition-colors">
+          เน€เธเธดเนเธกเธฅเธเธ•เธฐเธเธฃเนเธฒ
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\data\pairings.ts =====
+export interface PairingItem {
+  id: string;
+  targetTeaId: string; // เธญเนเธฒเธเธญเธดเธ ID เธเธญเธเธเธฒเธ—เธตเนเน€เธเนเธฒเธเธนเนเธเธฑเธ
+  name: string;
+  description: string;
+  price: number;
+}
+
+export const teaPairings: PairingItem[] = [
+  { 
+    id: 'P01', 
+    targetTeaId: 'FT01', // เธชเธณเธซเธฃเธฑเธ Lanna Oolong Hills
+    name: 'เธญเธฒเธฅเธฑเธงเธเธฒเธงเธฑเธเธญเธเธเธงเธฑเธเน€เธ—เธตเธขเธ', 
+    description: 'เธเธงเธฒเธกเธซเธงเธฒเธเธฅเธฐเธกเธธเธเนเธฅเธฐเธเธฅเธดเนเธเธเธงเธฑเธเน€เธ—เธตเธขเธเธญเนเธญเธเน เธเธฐเธเนเธงเธขเธเธนเธเธงเธฒเธกเธซเธญเธกเธเธญเธเธเธฒเธญเธนเนเธซเธฅเธเธขเธญเธ”เธเนเธณเธเนเธฒเธเนเธซเนเนเธ”เธ”เน€เธ”เนเธเธขเธดเนเธเธเธถเนเธ', 
+    price: 120 
+  },
+  { 
+    id: 'P02', 
+    targetTeaId: 'HT01', // เธชเธณเธซเธฃเธฑเธ Lanna Chrysanthemum Pu-erh
+    name: 'เธเนเธฒเธงเนเธ•เนเธเธเนเธณเนเธ•เธเนเธกเนเธเธชเนเธกเธดเธเธด', 
+    description: 'เธเธงเธฒเธกเธเธฃเธธเธเธเธฃเธญเธเนเธฅเธฐเธฃเธชเธซเธงเธฒเธเธเธฃเธฃเธกเธเธฒเธ•เธด เธเธฐเธเนเธงเธขเธ•เธฑเธ”เธเธงเธฒเธกเธฅเธธเนเธกเธฅเธถเธเธเธญเธเธเธฒเธเธนเน€เธญเนเธญเธฃเนเธเนเธกเธซเธกเธฑเธเนเธ”เนเธญเธขเนเธฒเธเธฅเธเธ•เธฑเธง', 
+    price: 85 
+  },
+  { 
+    id: 'P03', 
+    targetTeaId: 'HT02', // เธชเธณเธซเธฃเธฑเธ Lanna Mountain Black
+    name: 'เธ”เธฒเธฃเนเธเธเนเธญเธเนเธเนเธฅเธ•เธชเธญเธ”เนเธชเนเธกเธฐเนเธเธงเนเธ', 
+    description: 'เธขเธเธฃเธฐเธ”เธฑเธเธฃเธชเธเธฒเธ•เธดเธเธฒเธ”เธณเธ”เนเธงเธขเธกเธดเธ•เธดเธเธงเธฒเธกเน€เธเนเธกเธเนเธ เนเธฅเธฐเธเธงเธฒเธกเน€เธเนเธ”เธฃเนเธญเธเธเนเธฒเธเธฒเธเน เธ—เธตเนเธเธฅเธฒเธขเธฅเธดเนเธเธเธญเธเธชเธกเธธเธเนเธเธฃเธฅเนเธฒเธเธเธฒ', 
+    price: 150 
+  }
+];
+
+
+===== C:\Users\admin\lanna-tea-app\src\hooks\useGuestProfile.ts =====
+import { useState, useEffect } from 'react';
+import { GuestProfile } from '@/types/guest.types';
+import { UserAssessmentPayload } from '@/types/tea.types';
+import { Logger } from '@/utils/logger';
+
+const STORAGE_KEY = 'lanna_guest_profile';
+
+export function useGuestProfile() {
+  const [profile, setProfile] = useState<GuestProfile | null>(null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const storedData = window.localStorage.getItem(STORAGE_KEY);
+      if (storedData) {
+        const parsedProfile = JSON.parse(storedData) as GuestProfile;
+        setProfile(parsedProfile);
+        
+        // เนเธเนเนเธ Error: เธซเนเธญเธฃเธงเธก Message เนเธฅเธฐ Data เนเธงเนเนเธ Object เน€เธ”เธตเธขเธงเธเธฑเธ
+        Logger.info('useGuestProfile', { 
+          message: 'Loaded existing guest profile', 
+          data: parsedProfile 
+        });
+      }
+    } catch (error) {
+      // เนเธเนเนเธ Error: เนเธเธฅเธ unknown error เนเธซเนเน€เธเนเธ Object เธ—เธตเนเธญเนเธฒเธเธเนเธฒเนเธ”เน
+      Logger.error('useGuestProfile', { 
+        message: 'Failed to load profile from localStorage', 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    } finally {
+      setIsLoaded(true);
+    }
+  }, []);
+
+  const saveProfile = (assessment: UserAssessmentPayload, recommendedTeaId: string) => {
+    try {
+      const newProfile: GuestProfile = {
+        lastAssessment: assessment,
+        preferredTeaId: recommendedTeaId,
+        lastVisit: new Date().toISOString(),
+      };
+      
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newProfile));
+      setProfile(newProfile);
+      
+      // เนเธเนเนเธ Error: เธซเนเธญเธฃเธงเธกเน€เธเนเธ Object เธเนเธญเธเธชเนเธเน€เธเนเธฒ Logger
+      Logger.info('useGuestProfile', { 
+        message: 'Profile saved successfully', 
+        data: newProfile 
+      });
+    } catch (error) {
+      Logger.error('useGuestProfile', { 
+        message: 'Failed to save profile to localStorage', 
+        details: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  };
+
+  return { profile, isLoaded, saveProfile };
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\services\inventory.service.ts =====
+import { InventoryItem, StockStatus } from '@/types/admin.types';
+
+export class InventoryService {
+  // เธเธณเธฅเธญเธเธเธฒเธเธเนเธญเธกเธนเธฅเธงเธฑเธ•เธ–เธธเธ”เธดเธเธ”เธดเธเธซเธฅเธฑเธเธเนเธฒเธ (Mock Database)
+  private mockInventory = [
+    { id: 'INV-01', name: 'เนเธเธเธฒเธ”เธณเธ”เธญเธขเธเธนเนเธซเธกเธทเนเธ', category: 'Tea Leaves', remaining: 2500, unit: 'g', usage: 150 },
+    { id: 'INV-02', name: 'เธ”เธญเธเน€เธเนเธเธฎเธงเธขเธเนเธฒ', category: 'Herbs', remaining: 800, unit: 'g', usage: 100 },
+    { id: 'INV-03', name: 'เธขเธญเธ”เธเธฒเธญเธนเนเธซเธฅเธเธเนเธณเธเนเธฒเธ', category: 'Tea Leaves', remaining: 5000, unit: 'g', usage: 200 },
+    { id: 'INV-04', name: 'เธกเธฐเนเธเธงเนเธเธเธฑเนเธง', category: 'Spices', remaining: 150, unit: 'g', usage: 30 },
+    { id: 'INV-05', name: 'เธเนเธณเธเธถเนเธเธเนเธฒเน€เธ”เธทเธญเธเธซเนเธฒ', category: 'Sweetener', remaining: 400, unit: 'ml', usage: 80 },
+  ];
+
+  // เธชเธกเธญเธเธเธฅเธเธณเธเธงเธ“ Predictive Inventory
+  public getPredictiveInventory(): InventoryItem[] {
+    return this.mockInventory.map(item => {
+      // เธเธณเธเธงเธ“เธงเนเธฒเธเธญเธเธเธฐเธซเธกเธ”เนเธเธญเธตเธเธเธตเนเธงเธฑเธ
+      const daysLeft = Math.floor(item.remaining / item.usage);
+      
+      // เธเธฃเธฐเน€เธกเธดเธเธชเธ–เธฒเธเธฐเนเธเนเธเน€เธ•เธทเธญเธ
+      let status: StockStatus = 'HEALTHY';
+      if (daysLeft <= 7) {
+        status = 'CRITICAL'; // เธเธญเธเธเธฐเธซเธกเธ”เธ เธฒเธขเนเธเธญเธฒเธ—เธดเธ•เธขเนเธเธตเน เธ•เนเธญเธเธชเธฑเนเธเธ”เนเธงเธ!
+      } else if (daysLeft <= 15) {
+        status = 'WARNING';  // เธเธญเธเธเธฐเธซเธกเธ”เนเธเธเธฃเธถเนเธเน€เธ”เธทเธญเธ เน€เธฃเธดเนเธกเธงเธฒเธเนเธเธเธชเธฑเนเธ
+      }
+
+      return {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        remainingQuantity: item.remaining,
+        unit: item.unit,
+        averageDailyUsage: item.usage,
+        estimatedDaysLeft: daysLeft,
+        status: status
+      };
+    });
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\services\recommendation.service.test.ts =====
+import { describe, expect, it } from "vitest";
+import {
+  dotProduct,
+  matrixToVector,
+  RecommendationService,
+} from "@/services/recommendation.service";
+import type { TeaMatrix, TeaProduct, UserAssessmentPayload } from "@/types/tea.types";
+
+const floralTea: TeaProduct = {
+  id: "test-floral",
+  name: "Test Floral",
+  slug: "test-floral",
+  description: "High floral profile",
+  origin: "Test",
+  matrix: {
+    floral: 1,
+    fruity: 0,
+    earthy: 0,
+    sweet: 0.5,
+    bitter: 0,
+    warming: 0,
+    caffeine: 0.3,
+  },
+  priceCents: 1000,
+  inventoryCount: 10,
+  tags: ["test"],
+};
+
+const earthyTea: TeaProduct = {
+  id: "test-earthy",
+  name: "Test Earthy",
+  slug: "test-earthy",
+  description: "High earthy profile",
+  origin: "Test",
+  matrix: {
+    floral: 0,
+    fruity: 0,
+    earthy: 1,
+    sweet: 0.2,
+    bitter: 0.6,
+    warming: 0.7,
+    caffeine: 0.8,
+  },
+  priceCents: 1500,
+  inventoryCount: 5,
+  tags: ["test"],
+};
+
+const outOfStockTea: TeaProduct = {
+  ...floralTea,
+  id: "test-oos",
+  name: "Test Out of Stock",
+  slug: "test-oos",
+  inventoryCount: 0,
+};
+
+const expensiveTea: TeaProduct = {
+  ...floralTea,
+  id: "test-expensive",
+  name: "Test Expensive",
+  slug: "test-expensive",
+  priceCents: 5000,
+};
+
+const catalog = [floralTea, earthyTea, outOfStockTea, expensiveTea];
+
+describe("dotProduct", () => {
+  it("returns highest score for identical vectors", () => {
+    const vector = matrixToVector(floralTea.matrix);
+    expect(dotProduct(vector, vector)).toBeCloseTo(1.34, 5);
+  });
+
+  it("returns zero for orthogonal preference and product vectors", () => {
+    const floralVector = matrixToVector({
+      floral: 1,
+      fruity: 0,
+      earthy: 0,
+      sweet: 0,
+      bitter: 0,
+      warming: 0,
+      caffeine: 0,
+    });
+    const earthyVector = matrixToVector(earthyTea.matrix);
+    expect(dotProduct(floralVector, earthyVector)).toBe(0);
+  });
+});
+
+describe("matrixToVector", () => {
+  it("clamps values above 1 and below 0", () => {
+    const matrix: TeaMatrix = {
+      floral: 1.5,
+      fruity: -0.2,
+      earthy: 0.5,
+      sweet: 0.5,
+      bitter: 0.5,
+      warming: 0.5,
+      caffeine: 0.5,
+    };
+    const vector = matrixToVector(matrix);
+    expect(vector[0]).toBe(1);
+    expect(vector[1]).toBe(0);
+  });
+});
+
+describe("RecommendationService", () => {
+  const service = new RecommendationService(catalog);
+
+  it("ranks floral tea first when user prefers floral notes", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: {
+        floral: 1,
+        fruity: 0,
+        earthy: 0,
+        sweet: 0.5,
+        bitter: 0,
+        warming: 0,
+        caffeine: 0,
+      },
+    };
+
+    const results = service.recommend(payload, 10);
+    expect(results[0].product.id).toBe("test-floral");
+
+    const floralScore = results.find((r) => r.product.id === "test-floral")!
+      .score;
+    const earthyScore = results.find((r) => r.product.id === "test-earthy")!
+      .score;
+    expect(floralScore).toBeGreaterThan(earthyScore);
+  });
+
+  it("excludes out-of-stock items when inStockOnly is true", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: floralTea.matrix,
+      constraints: { inStockOnly: true },
+    };
+
+    const results = service.recommend(payload, 10);
+    expect(results.every((r) => r.product.inventoryCount > 0)).toBe(true);
+    expect(results.find((r) => r.product.id === "test-oos")).toBeUndefined();
+  });
+
+  it("includes out-of-stock items when inStockOnly is false", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: floralTea.matrix,
+      constraints: { inStockOnly: false },
+    };
+
+    const results = service.recommend(payload, 10);
+    expect(results.find((r) => r.product.id === "test-oos")).toBeDefined();
+  });
+
+  it("filters by maxPriceCents constraint", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: floralTea.matrix,
+      constraints: { maxPriceCents: 1200 },
+    };
+
+    const results = service.recommend(payload, 10);
+    expect(results.every((r) => r.product.priceCents <= 1200)).toBe(true);
+    expect(
+      results.find((r) => r.product.id === "test-expensive"),
+    ).toBeUndefined();
+  });
+
+  it("returns at most the requested limit", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: {
+        floral: 0.5,
+        fruity: 0.5,
+        earthy: 0.5,
+        sweet: 0.5,
+        bitter: 0.5,
+        warming: 0.5,
+        caffeine: 0.5,
+      },
+    };
+
+    expect(service.recommend(payload, 2)).toHaveLength(2);
+  });
+
+  it("sorts results by descending score", () => {
+    const payload: UserAssessmentPayload = {
+      preferences: {
+        floral: 0.8,
+        fruity: 0,
+        earthy: 0.8,
+        sweet: 0.3,
+        bitter: 0.5,
+        warming: 0.5,
+        caffeine: 0.5,
+      },
+    };
+
+    const results = service.recommend(payload, 3);
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
+    }
+  });
+});
+
+
+===== C:\Users\admin\lanna-tea-app\src\services\recommendation.service.ts =====
+import { TeaProduct, UserAssessmentPayload } from '@/types/tea.types';
+
+// Hardcode เธเธฒเธเธเนเธญเธกเธนเธฅเธเธฒเธชเนเธ•เธฅเน Lanna & Tribal High Society 
+const lannaTeas: TeaProduct[] = [
+  { id: 'FT01', name: 'Lanna Oolong Hills', description: 'เธเธฒเธญเธนเนเธซเธฅเธเธขเธญเธ”เธเนเธณเธเนเธฒเธ เธซเธญเธกเธเธฅเธดเนเธเธเธฅเนเธงเธขเนเธกเนเธเนเธฒ เธเธธเนเธกเธเธงเธฅ เธเธธเนเธกเธเธญ', matrix: { relaxation: 0.8, healthBeauty: 0.5, flavorBoldness: 0.4 } },
+  { id: 'HT01', name: 'Lanna Chrysanthemum Pu-erh', description: 'เธเธฒเธเธนเน€เธญเนเธญเธฃเนเธเนเธกเธซเธกเธฑเธ เธเธชเธกเธ”เธญเธเน€เธเนเธเธฎเธงเธขเธเนเธฒ เนเธซเนเธเธงเธฒเธกเธฃเธนเนเธชเธถเธเธญเธเธญเธธเนเธ เธฅเธธเนเธกเธฅเธถเธ', matrix: { relaxation: 0.4, healthBeauty: 0.9, flavorBoldness: 0.8 } },
+  { id: 'HT02', name: 'Lanna Mountain Black', description: 'เธเธฒเธ”เธณเธฃเธชเน€เธเนเธกเธเนเธ เธกเธตเธกเธดเธ•เธดเธเธญเธเนเธเนเธเนเนเธฅเธฐเธกเธญเธฅเธ•เน เธเธฅเธธเธเธเธฅเธฑเธเธเธฒเธ', matrix: { relaxation: 0.2, healthBeauty: 0.6, flavorBoldness: 1.0 } }
+];
+
+export class RecommendationService {
+  public calculateTopTeas(payload: UserAssessmentPayload, limit: number = 3): TeaProduct[] {
+    // เนเธเธฅเธ 3 เธเธณเธ–เธฒเธกเน€เธเนเธเธเนเธฒเธเนเธณเธซเธเธฑเธ
+    const userVector = {
+      relax: payload.mood === 1 ? 1.0 : 0.2,
+      health: payload.purpose === 1 ? 1.0 : 0.5,
+      flavor: payload.taste === 1 ? 1.0 : 0.3,
+    };
+
+    // เธเธณเธเธงเธ“ Dot Product เธซเธฒเธเธฒเธ—เธตเนเน€เธเนเธฒเธเธฑเธเธ—เธตเนเธชเธธเธ”
+    const scoredTeas = lannaTeas.map(tea => {
+      const score = 
+        (userVector.relax * tea.matrix.relaxation) +
+        (userVector.health * tea.matrix.healthBeauty) +
+        (userVector.flavor * tea.matrix.flavorBoldness);
+      return { tea, score };
+    });
+
+    return scoredTeas.sort((a, b) => b.score - a.score).slice(0, limit).map(r => r.tea);
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\types\admin.types.ts =====
+// เธเธณเธซเธเธ”เธชเธ–เธฒเธเธฐเธเธงเธฒเธกเธงเธดเธเธคเธ•เธเธญเธเธชเธ•เนเธญเธ
+export type StockStatus = 'CRITICAL' | 'WARNING' | 'HEALTHY';
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  remainingQuantity: number; // เธเธณเธเธงเธเธงเธฑเธ•เธ–เธธเธ”เธดเธเธ—เธตเนเธกเธตเนเธเธชเธ•เนเธญเธ
+  unit: string;              // เธซเธเนเธงเธข (เน€เธเนเธ เธเธฃเธฑเธก, เธเธญเธ)
+  averageDailyUsage: number; // เธญเธฑเธ•เธฃเธฒเธเธฒเธฃเนเธเนเน€เธเธฅเธตเนเธขเธ•เนเธญเธงเธฑเธ (Predictive)
+  estimatedDaysLeft: number; // เธเธณเธเธงเธ“: เธเธณเธเธงเธเธ—เธตเนเธกเธต / เธญเธฑเธ•เธฃเธฒเธเธฒเธฃเนเธเน
+  status: StockStatus;       // เธเธณเธเธงเธ“: CRITICAL (< 7 เธงเธฑเธ), WARNING (< 15 เธงเธฑเธ)
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\types\guest.types.ts =====
+import { UserAssessmentPayload } from './tea.types';
+
+// เธเธฑเธเธเธฑเธเนเธเธฃเธเธชเธฃเนเธฒเธเธเนเธญเธกเธนเธฅ Profile เธเธญเธเธเธนเนเนเธเนเธ—เธฑเนเธงเนเธ (Guest)
+export interface GuestProfile {
+  lastAssessment: UserAssessmentPayload; // เธเธณเธเธณเธ•เธญเธเธฅเนเธฒเธชเธธเธ”เธ—เธตเนเน€เธเธขเธเธฃเธฐเน€เธกเธดเธ
+  preferredTeaId: string;                // เธเธณ ID เธเธญเธเธเธฒเธ—เธตเนเธฃเธฐเธเธเนเธเธฐเธเธณเนเธเธฅเนเธฒเธชเธธเธ”
+  lastVisit: string;                     // เธเธณเน€เธงเธฅเธฒเธ—เธตเนเน€เธเนเธฒเธกเธฒเธเธฃเธฐเน€เธกเธดเธเธฅเนเธฒเธชเธธเธ” (ISO String)
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\types\tea.types.ts =====
+// เธเธฑเธเธเธฑเธเนเธเธฃเธเธชเธฃเนเธฒเธเนเธซเนเธ•เธฃเธเธเธฑเธ UI เธซเธเนเธฒเธเนเธฒเธเธเธญเธเน€เธฃเธฒ
+export interface TeaMatrix {
+  relaxation: number;
+  healthBeauty: number;
+  flavorBoldness: number;
+  [key: string]: number | undefined; // เธ—เธดเนเธเนเธงเนเน€เธเธทเนเธญ AI เธกเธฑเธเนเธชเนเนเธเธเธญเธทเนเธเธกเธฒเธเธฐเนเธ”เนเนเธกเนเธเธฑเธ
+}
+
+export interface TeaProduct {
+  id: string;
+  name: string;
+  description: string;
+  matrix: TeaMatrix;
+  [key: string]: any; // เธฃเธญเธเธฃเธฑเธเธเนเธญเธกเธนเธฅเธเธธเธเธเธดเธเน€เธเนเธ price, stock
+}
+
+export interface UserAssessmentPayload {
+  mood: number;
+  taste: number;
+  purpose: number;
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\utils\logger.ts =====
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  context?: string;
+  meta?: Record<string, unknown>;
+  error?: {
+    name: string;
+    message: string;
+    stack?: string;
+  };
+}
+
+export class Logger {
+  private static readonly isDev = process.env.NODE_ENV !== "production";
+
+  private static serialize(
+    level: LogLevel,
+    message: string,
+    options?: {
+      context?: string;
+      meta?: Record<string, unknown>;
+      error?: unknown;
+    },
+  ): string {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+    };
+
+    if (options?.context) entry.context = options.context;
+    if (options?.meta) entry.meta = options.meta;
+
+    if (options?.error instanceof Error) {
+      entry.error = {
+        name: options.error.name,
+        message: options.error.message,
+        stack: this.isDev ? options.error.stack : undefined,
+      };
+    }
+
+    return JSON.stringify(entry);
+  }
+
+  static debug(
+    message: string,
+    meta?: Record<string, unknown>,
+    context?: string,
+  ): void {
+    if (!this.isDev) return;
+    console.debug(this.serialize("debug", message, { context, meta }));
+  }
+
+  static info(
+    message: string,
+    meta?: Record<string, unknown>,
+    context?: string,
+  ): void {
+    console.info(this.serialize("info", message, { context, meta }));
+  }
+
+  static warn(
+    message: string,
+    meta?: Record<string, unknown>,
+    context?: string,
+  ): void {
+    console.warn(this.serialize("warn", message, { context, meta }));
+  }
+
+  static error(
+    message: string,
+    error?: unknown,
+    meta?: Record<string, unknown>,
+    context?: string,
+  ): void {
+    console.error(this.serialize("error", message, { context, meta, error }));
+  }
+}
+
+
+===== C:\Users\admin\lanna-tea-app\src\validators\assessment.validator.test.ts =====
+import { describe, expect, it } from "vitest";
+import {
+  formatAssessmentValidationError,
+  parseUserAssessmentPayload,
+} from "@/validators/assessment.validator";
+
+const validPayload = {
+  preferences: {
+    floral: 0.8,
+    fruity: 0.2,
+    earthy: 0.5,
+    sweet: 0.6,
+    bitter: 0.3,
+    warming: 0.4,
+    caffeine: 0.5,
+  },
+  sessionId: "guest-123",
+  constraints: {
+    inStockOnly: true,
+    maxPriceCents: 1500,
+  },
+};
+
+describe("parseUserAssessmentPayload", () => {
+  it("accepts a valid payload", () => {
+    expect(parseUserAssessmentPayload(validPayload)).toEqual(validPayload);
+  });
+
+  it("rejects missing preferences", () => {
+    expect(parseUserAssessmentPayload({})).toBeNull();
+  });
+
+  it("rejects out-of-range matrix values", () => {
+    expect(
+      parseUserAssessmentPayload({
+        preferences: { ...validPayload.preferences, floral: 1.5 },
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects unknown fields (strict mode)", () => {
+    expect(
+      parseUserAssessmentPayload({
+        ...validPayload,
+        extraField: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects negative maxPriceCents", () => {
+    expect(
+      parseUserAssessmentPayload({
+        preferences: validPayload.preferences,
+        constraints: { maxPriceCents: -100 },
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("formatAssessmentValidationError", () => {
+  it("returns empty string for valid payload", () => {
+    expect(formatAssessmentValidationError(validPayload)).toBe("");
+  });
+
+  it("returns human-readable issue paths for invalid payload", () => {
+    const message = formatAssessmentValidationError({});
+    expect(message).toContain("preferences");
+  });
+});
+
+
+===== C:\Users\admin\lanna-tea-app\src\validators\assessment.validator.ts =====
+import { z } from 'zod';
+
+// เธเธฑเธเธเธฑเธเนเธซเน Zod เธ•เธฃเธงเธเธชเธญเธเนเธเน 3 เธเนเธฒเธ—เธตเนเน€เธฃเธฒเธชเนเธเนเธ
+export const assessmentSchema = z.object({
+  mood: z.number(),
+  taste: z.number(),
+  purpose: z.number()
+});
+
+export function parseUserAssessmentPayload(data: unknown) {
+  return assessmentSchema.parse(data);
+}
+
+export function formatAssessmentValidationError(error: any) {
+  return { success: false, error: "Validation Failed", details: error };
+}
+
+
