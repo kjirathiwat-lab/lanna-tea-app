@@ -9,6 +9,7 @@ import { TEA_CATALOG } from '@/services/recommendation.service';
 import { UpSaleRecommendation } from './UpSaleRecommendation';
 import { TeaDetailsModal } from './TeaDetailsModal';
 import { CartDrawer } from './CartDrawer';
+import { FullMenuCatalogModal } from './FullMenuCatalogModal';
 
 const MOOD_OPTIONS = [
   { value: 'ต้องการความสงบและผ่อนคลายจากความวุ่นวาย', label: 'ต้องการความสงบและผ่อนคลายจากความวุ่นวาย' },
@@ -34,6 +35,9 @@ const PURPOSE_OPTIONS = [
 export function RecommendationForm() {
   const { profile, isLoaded, isReturningGuest, recordVisitAndOrder } = useGuestProfile();
 
+  const [currentView, setCurrentView] = useState<'landing' | 'assessment' | 'results'>('landing');
+
+  // Form State
   const [mood, setMood] = useState<string>(MOOD_OPTIONS[0].value);
   const [taste, setTaste] = useState<string>(TASTE_OPTIONS[0].value);
   const [purpose, setPurpose] = useState<string>(PURPOSE_OPTIONS[0].value);
@@ -42,13 +46,12 @@ export function RecommendationForm() {
   const [results, setResults] = useState<RecommendationResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Cart State
+  // Cart & Modal State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
-  const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
-
-  // Modal State
+  const [isFullMenuOpen, setIsFullMenuOpen] = useState<boolean>(false);
   const [detailTea, setDetailTea] = useState<TeaProduct | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
 
   // AI Sommelier State
   const [showDeepDive, setShowDeepDive] = useState<boolean>(false);
@@ -85,7 +88,7 @@ export function RecommendationForm() {
     setCartItems([]);
     setIsCartOpen(false);
     setOrderSuccess(true);
-    Logger.info('Order successfully submitted from Cart', undefined, 'UI/RecommendationForm');
+    Logger.info('Order placed successfully from Cart', undefined, 'UI/RecommendationForm');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +111,7 @@ export function RecommendationForm() {
       }
 
       setResults(json.data);
+      setCurrentView('results');
       Logger.info('Recommendation calculated successfully', { count: json.data.length }, 'UI/RecommendationForm');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผล';
@@ -155,6 +159,7 @@ export function RecommendationForm() {
 
   const handleReset = () => {
     setResults([]);
+    setCurrentView('landing');
     setShowDeepDive(false);
     setDeepDiveResult(null);
     setDeepDiveError(null);
@@ -167,41 +172,36 @@ export function RecommendationForm() {
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="w-full font-serif text-stone-800 relative">
-      {/* Header Banner & Cart Access */}
-      <div className="bg-black text-white py-5 px-6 mb-8 shadow-sm flex justify-between items-center">
-        <div className="w-16" />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold tracking-wide">Lanna Tea</h2>
-          <p className="text-xs text-stone-400 mt-1 tracking-wider">
-            Discover teas from Northern Thailand, matched to your taste.
-          </p>
+    <div className="w-full font-serif text-stone-800 relative min-h-screen">
+      {/* 👑 Clean Single Luxury Header */}
+      <header className="bg-[#1A232A] text-[#FAF8F5] border-b border-[#2C3B47] py-4 px-6 mb-8 sticky top-0 z-40 shadow-md">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div className="cursor-pointer" onClick={() => setCurrentView('landing')}>
+            <h1 className="text-xl sm:text-2xl font-normal tracking-wide text-[#FAF8F5]">
+              Lanna & Tribal
+            </h1>
+            <p className="text-[11px] text-stone-400 font-sans tracking-widest uppercase mt-0.5">
+              High Society Tea House • Chiang Rai Heritage
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCartOpen(true)}
+            className="relative bg-[#25323D] hover:bg-[#2F3F4E] border border-stone-600 text-stone-200 px-4 py-2 text-xs font-sans flex items-center gap-2 transition cursor-pointer"
+          >
+            <span>ตะกร้าเมนู</span>
+            {totalCartCount > 0 && (
+              <span className="bg-[#8C7355] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold font-sans">
+                {totalCartCount}
+              </span>
+            )}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsCartOpen(true)}
-          className="relative text-stone-300 hover:text-white p-2 text-xs font-sans flex items-center gap-2 border border-stone-700 px-3 py-1.5 cursor-pointer"
-        >
-          <span>ตะกร้า</span>
-          {totalCartCount > 0 && (
-            <span className="bg-[#8C7355] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold font-sans">
-              {totalCartCount}
-            </span>
-          )}
-        </button>
-      </div>
+      </header>
 
       <div className="max-w-2xl mx-auto px-4 pb-16">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl sm:text-4xl font-normal text-slate-800 tracking-tight">
-            Lanna & Tribal
-          </h1>
-          <p className="text-sm italic text-stone-600 mt-2 font-serif">
-            &quot;ค้นพบชาที่สะท้อนตัวตนและอารมณ์ของคุณในวันนี้&quot;
-          </p>
-          <div className="w-16 h-px bg-stone-300 mx-auto mt-4" />
-        </div>
-
+        {/* Order Success Banner */}
         {orderSuccess && (
           <div className="mb-6 p-4 bg-emerald-50 border border-emerald-300 text-center space-y-1">
             <p className="text-sm font-medium text-emerald-900">
@@ -213,19 +213,109 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {isLoaded && isReturningGuest && profile?.lastOrderedTea && results.length === 0 && (
-          <div className="mb-6 p-4 bg-[#F5F2EB] border border-[#D9D2C5] text-center space-y-1">
-            <p className="text-xs font-sans uppercase tracking-widest text-[#8C7355]">
-              Welcome Back • ยินดีต้อนรับกลับมาเยือนอีกครั้ง (ครั้งที่ {profile.visitCount})
-            </p>
-            <p className="text-xs text-stone-700 italic">
-              ครั้งก่อนคุณเลือกลิ้มลอง &quot;{profile.lastOrderedTea.name}&quot; วันนี้ต้องการรสชาติเดิมหรือลองสิ่งใหม่ดีครับ?
-            </p>
+        {/* View 1: Dynamic Welcome & Experience Selection Cards */}
+        {currentView === 'landing' && (
+          <div className="space-y-6">
+            <div className="p-6 bg-[#FAF8F5] border border-stone-200 text-center space-y-2 border-t-2 border-t-[#8C7355] shadow-xs">
+              {isLoaded && isReturningGuest ? (
+                <>
+                  <span className="text-[10px] tracking-widest uppercase font-sans text-[#8C7355] font-semibold">
+                    Welcome Back • การมาเยือนครั้งที่ {profile?.visitCount || 1}
+                  </span>
+                  <h2 className="text-xl font-normal text-stone-900">
+                    ยินดีต้อนรับกลับสู่ห้องจิบชา Lanna & Tribal
+                  </h2>
+                  <p className="text-xs text-stone-600 leading-relaxed max-w-lg mx-auto">
+                    เรายินดีเป็นอย่างยิ่งที่ได้ให้บริการท่านอีกครั้งครับ
+                    {profile?.lastOrderedTea && (
+                      <span className="block mt-1 italic text-stone-800">
+                        (ครั้งก่อนท่านเลือกลิ้มลอง &quot;{profile.lastOrderedTea.name}&quot;)
+                      </span>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] tracking-widest uppercase font-sans text-[#8C7355] font-semibold">
+                    High Tea Ritual Experience
+                  </span>
+                  <h2 className="text-xl font-normal text-stone-900">
+                    ยินดีต้อนรับสู่ Lanna & Tribal High Society Tea House
+                  </h2>
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    วันนี้ท่านปรารถนาจะเปิดรับสุนทรียภาพแห่งการจิบชาในรูปแบบใดครับ?
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* 2 Main Choice Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-white border border-stone-300 p-6 flex flex-col justify-between hover:border-[#8C7355] transition shadow-xs group">
+                <div className="space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-[#F5F2EB] text-[#8C7355] flex items-center justify-center text-sm font-sans font-bold">
+                    1
+                  </div>
+                  <h3 className="text-lg font-medium text-stone-900 group-hover:text-[#8C7355] transition">
+                    รังสรรค์ชาเฉพาะบุคคล
+                  </h3>
+                  <p className="text-xs text-stone-400 uppercase tracking-widest font-sans">
+                    Personalized Tea Pairing
+                  </p>
+                  <p className="text-xs text-stone-600 leading-relaxed pt-2">
+                    ให้ Sommelier เทียบมิติอารมณ์และรสชาติ เพื่อค้นพบ 3 ชาเอกลักษณ์ที่สะท้อนตัวตนของท่าน ณ ขณะนี้
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('assessment')}
+                  className="mt-6 w-full py-2.5 bg-[#25323D] group-hover:bg-black text-white text-xs font-sans uppercase tracking-wider transition cursor-pointer"
+                >
+                  เริ่มการเทียบสัมผัส
+                </button>
+              </div>
+
+              <div className="bg-white border border-stone-300 p-6 flex flex-col justify-between hover:border-[#8C7355] transition shadow-xs group">
+                <div className="space-y-2">
+                  <div className="w-8 h-8 rounded-full bg-[#F5F2EB] text-[#8C7355] flex items-center justify-center text-sm font-sans font-bold">
+                    2
+                  </div>
+                  <h3 className="text-lg font-medium text-stone-900 group-hover:text-[#8C7355] transition">
+                    ยลโฉมคอลเลกชั่นชาทั้งหมด
+                  </h3>
+                  <p className="text-xs text-stone-400 uppercase tracking-widest font-sans">
+                    Explore Signature Collection
+                  </p>
+                  <p className="text-xs text-stone-600 leading-relaxed pt-2">
+                    เปิดสมุดภาพทำเนียบชาพญาดอยทั้ง 10 Signature Blends และสำรับของว่างชาววัง พร้อมสั่งจิบได้ทันที
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFullMenuOpen(true)}
+                  className="mt-6 w-full py-2.5 border border-stone-800 text-stone-800 group-hover:bg-stone-100 text-xs font-sans uppercase tracking-wider transition cursor-pointer"
+                >
+                  เปิดสมุดภาพเมนูชา
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        {results.length === 0 ? (
+        {/* View 2: Assessment Form */}
+        {currentView === 'assessment' && (
           <div className="bg-[#FAF8F5] border border-stone-200/80 p-8 shadow-sm border-t-2 border-t-[#8C7355]">
+            <div className="flex justify-between items-center mb-6 border-b border-stone-200 pb-3">
+              <h3 className="text-lg font-medium text-stone-900">แบบประเมินรังสรรค์ชาเฉพาะบุคคล</h3>
+              <button
+                type="button"
+                onClick={() => setCurrentView('landing')}
+                className="text-xs text-stone-500 hover:text-black font-sans underline cursor-pointer"
+              >
+                ← ย้อนกลับ
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-stone-800 mb-2">
@@ -294,14 +384,16 @@ export function RecommendationForm() {
               </button>
             </form>
           </div>
-        ) : (
+        )}
+
+        {/* View 3: Recommendation Results */}
+        {currentView === 'results' && (
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-normal text-slate-800">Lanna Tea Selections</h2>
               <p className="text-xs text-stone-500 mt-1">ชาที่รังสรรค์มาเพื่อคุณโดยเฉพาะ</p>
             </div>
 
-            {/* Top 3 Tea Selections */}
             <div className="space-y-4">
               {results.map((item, idx) => {
                 const displayRate = item.matchPercentage || Math.min(99, Math.max(80, 99 - idx * 5));
@@ -355,7 +447,7 @@ export function RecommendationForm() {
               })}
             </div>
 
-            {/* Up-Sale Pairing (ต่อเข้า Cart ทันที) */}
+            {/* Up-Sale Pairing */}
             {results.length > 0 && (
               <div className="mt-6">
                 <UpSaleRecommendation
@@ -446,13 +538,22 @@ export function RecommendationForm() {
                 onClick={handleReset}
                 className="px-6 py-2.5 border border-stone-400 text-xs tracking-wider uppercase font-sans text-stone-700 hover:bg-stone-100 transition cursor-pointer"
               >
-                ค้นหาใหม่อีกครั้ง
+                กลับสู่หน้าหลัก
               </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* Full Menu Modal */}
+      <FullMenuCatalogModal
+        isOpen={isFullMenuOpen}
+        onClose={() => setIsFullMenuOpen(false)}
+        onSelectTeaDetail={(tea) => setDetailTea(tea)}
+        onAddToCart={addToCart}
+      />
+
+      {/* Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
         items={cartItems}
@@ -461,6 +562,7 @@ export function RecommendationForm() {
         onCheckout={handleCheckout}
       />
 
+      {/* Tea Details Modal */}
       {detailTea && (
         <TeaDetailsModal
           tea={detailTea}
