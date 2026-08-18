@@ -1,29 +1,29 @@
-export interface TeaFlavorProfile {
-  floral: number;
-  fruity: number;
-  earthy: number;
-  herbal: number;
-  sweetness: number;
-  astringency: number;
-  body: number;
+export interface TeaMetadataVector {
+  executiveFocus: number;
+  relaxation: number;
+  healthBeauty: number;
+  localStory: number;
+  flavorBoldness: number;
+  visualImpact: number;
 }
 
-export type FlavorVector = [number, number, number, number, number, number, number];
+export type MatrixVector = [number, number, number, number, number, number];
 
 export interface TeaProduct {
   id: string;
+  code: string;
   name: string;
   thaiName: string;
-  origin: string;
-  category: 'Black' | 'Oolong' | 'Green' | 'Herbal' | 'White';
+  category: 'Herbal' | 'Floral' | 'Black' | 'Oolong' | 'Green' | 'White';
+  ingredients?: string;
   description: string;
+  story: string;
+  matrix: TeaMetadataVector;
   brewingInstructions: {
     temperatureCelsius: number;
     steepTimeSeconds: number;
     ratioGramsPerMl: string;
   };
-  flavorProfile: TeaFlavorProfile;
-  tags: string[];
   priceCents?: number;
   inventoryCount?: number;
 }
@@ -32,12 +32,11 @@ export interface UserAssessmentPayload {
   mood?: string | number;
   taste?: string | number;
   purpose?: string | number;
-  preferredCategories?: string[];
-  maxCaffeine?: boolean;
 }
 
 export interface RecommendationResult {
   tea: TeaProduct;
   matchScore: number;
+  matchPercentage?: number;
   reason: string;
 }

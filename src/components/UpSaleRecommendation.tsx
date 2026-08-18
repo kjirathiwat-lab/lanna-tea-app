@@ -1,47 +1,61 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useGuestProfile } from '@/hooks/useGuestProfile';
-import { teaPairings, PairingItem } from '@/data/pairings';
+import React from 'react';
+import { TeaProduct } from '@/types/tea.types';
 
-export function UpSaleRecommendation() {
-  const { profile, isLoaded } = useGuestProfile();
-  const [pairing, setPairing] = useState<PairingItem | null>(null);
+interface UpSaleProps {
+  primaryTea?: TeaProduct;
+}
 
-  // ดึงข้อมูลสินค้าที่ตรงกับความจำของระบบ
-  useEffect(() => {
-    if (isLoaded && profile?.preferredTeaId) {
-      const matchedPairing = teaPairings.find(p => p.targetTeaId === profile.preferredTeaId);
-      setPairing(matchedPairing || null);
-    }
-  }, [profile, isLoaded]);
+export function UpSaleRecommendation({ primaryTea }: UpSaleProps) {
+  if (!primaryTea) return null;
 
-  // ถ้ายังโหลดไม่เสร็จ หรือไม่มีข้อมูลที่ตรงกัน ให้ซ่อน Component นี้ไปเลย
-  if (!pairing) return null;
+  const isFloral = primaryTea.category === 'Floral';
+
+  const pairingItem = isFloral
+    ? {
+        title: 'Artisanal Scone & Lotus Jam Set',
+        thaiTitle: 'ชุดสโคนชาอูหลงยอดดอยเสิร์ฟคู่แยมเกสรบัวหลวง',
+        desc: 'ช่วยชูความหอมละมุนของชาดอกไม้ให้เด่นชัดขึ้นในทุกคำ',
+        price: '฿180',
+      }
+    : {
+        title: 'Heritage Roasted Sesame & Wild Honey Rice Cake',
+        thaiTitle: 'ข้าวปุกงาดอยน้ำอ้อยเคี่ยวและน้ำผึ้งป่าเดือนห้า',
+        desc: 'ความนุ่มหนึบและหวานธรรมชาติ ช่วยตัดและผสานรสเข้มของชาสมุนไพรอย่างลงตัว',
+        price: '฿150',
+      };
 
   return (
-    <div className="mt-16 bg-[#FDFCF9] border border-[#8B7355] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between relative overflow-hidden animate-fade-in-up">
-      {/* Decorative Background Texture */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4C4A8] opacity-10 rounded-full -mr-16 -mt-16"></div>
-      
-      <div className="flex-1 pr-0 md:pr-8 text-center md:text-left z-10">
-        <h4 className="text-xs text-[#8B7355] tracking-widest uppercase mb-2">Curated Pairing</h4>
-        <h3 className="text-2xl font-serif text-[#2C3E50] mb-2">
-          เติมเต็มสุนทรียภาพด้วย "{pairing.name}"
-        </h3>
-        <p className="text-[#5C4D3C] text-sm leading-relaxed">
-          {pairing.description}
-        </p>
+    <div className="bg-[#F5F2EB] border border-[#D9D2C5] p-5 my-6">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[10px] tracking-widest bg-[#8C7355] text-white px-2 py-0.5 uppercase font-sans">
+          Curated Pairing
+        </span>
+        <span className="text-xs text-stone-600 font-serif italic">
+          ยกระดับสุนทรียรสคู่กับ {primaryTea.name}
+        </span>
       </div>
 
-      <div className="mt-6 md:mt-0 flex flex-col items-center md:items-end z-10 border-t md:border-t-0 md:border-l border-[#EBE5D9] pt-6 md:pt-0 md:pl-8 min-w-[150px]">
-        <span className="text-[#2C3E50] font-serif text-2xl mb-3">
-          ฿{pairing.price}
-        </span>
-        <button className="w-full px-6 py-2 bg-transparent border border-[#2C3E50] text-[#2C3E50] text-xs uppercase tracking-widest hover:bg-[#2C3E50] hover:text-[#F9F6F0] transition-colors">
-          เพิ่มลงตะกร้า
-        </button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h4 className="font-medium text-stone-900 text-sm">{pairingItem.title}</h4>
+          <p className="text-xs text-stone-700 font-sans mt-0.5">{pairingItem.thaiTitle}</p>
+          <p className="text-xs text-stone-500 mt-1">{pairingItem.desc}</p>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-300">
+          <span className="text-sm font-semibold text-stone-900 font-sans">{pairingItem.price}</span>
+          <button
+            type="button"
+            onClick={() => alert(`เพิ่ม "${pairingItem.title}" เข้าในรายการจิบชาเรียบร้อยแล้ว`)}
+            className="px-3 py-1.5 bg-[#25323D] hover:bg-black text-white text-xs font-sans transition"
+          >
+            สั่งคู่กับชา
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+export default UpSaleRecommendation;

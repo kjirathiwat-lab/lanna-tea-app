@@ -1,28 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { RecommendationService, dotProduct } from './recommendation.service';
-import { FlavorVector } from '@/types/tea.types';
+import { RecommendationService, dotProduct, matrixToVector } from './recommendation.service';
+import { MatrixVector, TeaMetadataVector } from '@/types/tea.types';
 
-describe('RecommendationService - Vector Math & Ranking', () => {
-  it('should calculate dot product accurately', () => {
-    const v1: FlavorVector = [1, 2, 3, 4, 5, 6, 7];
-    const v2: FlavorVector = [7, 6, 5, 4, 3, 2, 1];
-    // 7+12+15+16+15+12+7 = 84
-    expect(dotProduct(v1, v2)).toBe(84);
+describe('RecommendationService - 6D Matrix Math & Business Logic', () => {
+  it('should calculate 6D dot product accurately', () => {
+    const v1: MatrixVector = [0.9, 0.2, 1.0, 0.7, 1.0, 0.6];
+    const v2: MatrixVector = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
+    // 0.45 + 0.10 + 0.50 + 0.35 + 0.50 + 0.30 = 2.2
+    const result = dotProduct(v1, v2);
+    expect(parseFloat(result.toFixed(2))).toBe(2.2);
   });
 
-  it('should return top matching tea recommendations', () => {
-    const service = new RecommendationService();
-    const results = service.calculateTopTeas({ mood: 5, taste: 5 }, 2);
+  it('should convert TeaMetadataVector to MatrixVector array correctly', () => {
+    const meta: TeaMetadataVector = {
+      executiveFocus: 0.8,
+      relaxation: 0.4,
+      healthBeauty: 0.8,
+      localStory: 0.7,
+      flavorBoldness: 0.9,
+      visualImpact: 0.7,
+    };
+    const vec = matrixToVector(meta);
+    expect(vec).toEqual([0.8, 0.4, 0.8, 0.7, 0.9, 0.7]);
+  });
 
-    expect(results).toHaveLength(2);
-    expect(results[0].matchScore).toBeGreaterThanOrEqual(results[1].matchScore);
+  it('should return top 3 matching teas with valid match percentage', () => {
+    const service = new RecommendationService();
+    const results = service.calculateTopTeas(
+      {
+        mood: 'ต้องการความสงบและผ่อนคลายจากความวุ่นวาย',
+        taste: 'หอมหวานอวลกลิ่นดอกไม้ นุ่มนวลละมุนลิ้น',
+        purpose: 'บำรุงผิวพรรณและปรับสมดุลร่างกาย',
+      },
+      3
+    );
+
+    expect(results).toHaveLength(3);
+    expect(results[0].matchPercentage).toBeGreaterThanOrEqual(results[1].matchPercentage || 0);
     expect(results[0].tea).toHaveProperty('name');
+    expect(results[0].tea).toHaveProperty('category');
   });
 
-  it('should filter only herbal teas when maxCaffeine is true', () => {
+  it('should rank floral/relaxation teas higher for relaxation and beauty input', () => {
     const service = new RecommendationService();
-    const results = service.calculateTopTeas({ maxCaffeine: true });
+    const results = service.calculateTopTeas({
+      mood: 'ผ่อนคลาย นอนหลับ',
+      taste: 'หอมหวาน ดอกไม้',
+      purpose: 'ผิวพรรณ สวยงาม',
+    });
 
-    expect(results.every(r => r.tea.category === 'Herbal')).toBe(true);
+    const topTea = results[0].tea;
+    // กลุ่ม Relaxation & Beauty ควรได้ชา Floral เด่นขึ้นมา เช่น Chulalongkorn Rose Oolong หรือ Wild Chamomile
+    expect(['FT01', 'FT02', 'FT04', 'HT02']).toContain(topTea.id || topTea.code);
   });
 });

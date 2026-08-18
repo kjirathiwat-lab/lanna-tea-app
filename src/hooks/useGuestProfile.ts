@@ -3,15 +3,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Logger } from '@/utils/logger';
+import { UserAssessmentPayload, TeaProduct } from '@/types/tea.types';
 
-const guestProfileSchema = z.object({
-  sessionId: z.string().optional(),
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const guestProfileSchema = z.object({
+  sessionId: z.string(),
+  visitCount: z.number().default(1),
   preferredMood: z.union([z.string(), z.number()]).optional(),
   preferredTaste: z.union([z.string(), z.number()]).optional(),
   preferredPurpose: z.union([z.string(), z.number()]).optional(),
+  lastOrderedTea: z.object({
+    id: z.string(),
+    name: z.string(),
+    thaiName: z.string(),
+  }).optional(),
   history: z.array(z.string()).default([]),
-  lastVisited: z.string().optional(),
-}).passthrough();
+  lastVisited: z.string(),
+});
 
 export type GuestProfile = z.infer<typeof guestProfileSchema>;
 
@@ -20,6 +29,7 @@ const STORAGE_KEY = 'lanna_tea_guest_profile';
 export function useGuestProfile() {
   const [profile, setProfile] = useState<GuestProfile | null>(null);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [isReturningGuest, setIsReturningGuest] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -29,9 +39,17 @@ export function useGuestProfile() {
         const validated = guestProfileSchema.safeParse(parsed);
 
         if (validated.success) {
-          setProfile(validated.data);
+          const lastVisitTime = new Date(validated.data.lastVisited).getTime();
+          const isExpired = Date.now() - lastVisitTime > THIRTY_DAYS_MS;
+
+          if (isExpired) {
+            Logger.info('Guest cache expired (> 30 days), clearing storage', undefined, 'Hook/useGuestProfile');
+            localStorage.removeItem(STORAGE_KEY);
+          } else {
+            setProfile(validated.data);
+            setIsReturningGuest(true);
+          }
         } else {
-          Logger.error('Corrupted guest profile in localStorage, clearing...', validated.error, undefined, 'Hook/useGuestProfile');
           localStorage.removeItem(STORAGE_KEY);
         }
       }
@@ -42,42 +60,33 @@ export function useGuestProfile() {
     }
   }, []);
 
-  // รองรับทั้งแบบส่ง Object เดียว saveProfile(newProfile) และแบบ 2 arguments saveProfile(data, payload)
-  const saveProfile = useCallback((data: Partial<GuestProfile> | string, extra?: any) => {
+  const recordVisitAndOrder = useCallback((assessment: UserAssessmentPayload, orderedTea?: TeaProduct) => {
     try {
-      let mergedData: GuestProfile;
-
-      if (typeof data === 'string' && extra) {
-        // กรณีเรียกแบบ saveProfile('sessionId', payload) หรือ saveProfile(key, value)
-        mergedData = {
-          ...(profile || {}),
-          [data]: extra,
-          sessionId: profile?.sessionId || (data === 'sessionId' ? String(extra) : `guest_${Date.now()}`),
-          lastVisited: new Date().toISOString(),
-          history: profile?.history || [],
-        };
-      } else {
-        // กรณีเรียกแบบ saveProfile(payloadObject)
-        const base = typeof data === 'object' ? data : {};
-        const additional = typeof extra === 'object' ? extra : {};
-        mergedData = {
-          ...(profile || {}),
-          ...base,
-          ...additional,
-          sessionId: (base as any)?.sessionId || profile?.sessionId || `guest_${Date.now()}`,
-          lastVisited: new Date().toISOString(),
-          history: (base as any)?.history || profile?.history || [],
-        };
-      }
+      const currentCount = profile?.visitCount || 0;
+      const mergedData: GuestProfile = {
+        sessionId: profile?.sessionId || `guest_${Date.now()}`,
+        visitCount: currentCount + 1,
+        preferredMood: assessment.mood,
+        preferredTaste: assessment.taste,
+        preferredPurpose: assessment.purpose,
+        lastOrderedTea: orderedTea ? {
+          id: orderedTea.id,
+          name: orderedTea.name,
+          thaiName: orderedTea.thaiName,
+        } : profile?.lastOrderedTea,
+        history: orderedTea ? [...(profile?.history || []), orderedTea.name] : (profile?.history || []),
+        lastVisited: new Date().toISOString(),
+      };
 
       const validated = guestProfileSchema.parse(mergedData);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
       setProfile(validated);
-      Logger.info('Guest profile saved', { sessionId: validated.sessionId }, 'Hook/useGuestProfile');
+      setIsReturningGuest(true);
+      Logger.info('Guest order and visit profile recorded', { sessionId: validated.sessionId, visitCount: validated.visitCount }, 'Hook/useGuestProfile');
     } catch (error) {
-      Logger.error('Failed to save guest profile', error, undefined, 'Hook/useGuestProfile');
+      Logger.error('Failed to record guest profile', error, undefined, 'Hook/useGuestProfile');
     }
   }, [profile]);
 
-  return { profile, isLoaded, saveProfile };
+  return { profile, isLoaded, isReturningGuest, recordVisitAndOrder };
 }
