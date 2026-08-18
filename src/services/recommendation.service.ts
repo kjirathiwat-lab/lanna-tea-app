@@ -1,60 +1,30 @@
-import {
-  TEA_MATRIX_KEYS,
-  type ScoredTeaProduct,
-  type TeaMatrix,
-  type TeaProduct,
-  type UserAssessmentPayload,
-} from "@/types/tea.types";
+import { TeaProduct, UserAssessmentPayload } from '@/types/tea.types';
 
-const clamp = (value: number, min = 0, max = 1): number =>
-  Math.min(max, Math.max(min, value));
-
-export const matrixToVector = (matrix: TeaMatrix): readonly number[] =>
-  TEA_MATRIX_KEYS.map((key) => clamp(matrix[key]));
-
-/** Dot product — higher score = stronger alignment with user preferences */
-export const dotProduct = (
-  a: readonly number[],
-  b: readonly number[],
-): number => a.reduce((sum, value, index) => sum + value * b[index], 0);
-
-const passesConstraints = (
-  product: TeaProduct,
-  payload: UserAssessmentPayload,
-): boolean => {
-  const { constraints } = payload;
-  if (!constraints) return true;
-
-  if (
-    constraints.maxPriceCents !== undefined &&
-    product.priceCents > constraints.maxPriceCents
-  ) {
-    return false;
-  }
-
-  if (constraints.inStockOnly && product.inventoryCount <= 0) {
-    return false;
-  }
-
-  return true;
-};
+// Hardcode ฐานข้อมูลชาสไตล์ Lanna & Tribal High Society 
+const lannaTeas: TeaProduct[] = [
+  { id: 'FT01', name: 'Lanna Oolong Hills', description: 'ชาอู่หลงยอดน้ำค้าง หอมกลิ่นกล้วยไม้ป่า นุ่มนวล ชุ่มคอ', matrix: { relaxation: 0.8, healthBeauty: 0.5, flavorBoldness: 0.4 } },
+  { id: 'HT01', name: 'Lanna Chrysanthemum Pu-erh', description: 'ชาผูเอ่อร์บ่มหมัก ผสมดอกเก๊กฮวยป่า ให้ความรู้สึกอบอุ่น ลุ่มลึก', matrix: { relaxation: 0.4, healthBeauty: 0.9, flavorBoldness: 0.8 } },
+  { id: 'HT02', name: 'Lanna Mountain Black', description: 'ชาดำรสเข้มข้น มีมิติของโกโก้และมอลต์ ปลุกพลังงาน', matrix: { relaxation: 0.2, healthBeauty: 0.6, flavorBoldness: 1.0 } }
+];
 
 export class RecommendationService {
-  constructor(private readonly catalog: readonly TeaProduct[]) {}
+  public calculateTopTeas(payload: UserAssessmentPayload, limit: number = 3): TeaProduct[] {
+    // แปลง 3 คำถามเป็นค่าน้ำหนัก
+    const userVector = {
+      relax: payload.mood === 1 ? 1.0 : 0.2,
+      health: payload.purpose === 1 ? 1.0 : 0.5,
+      flavor: payload.taste === 1 ? 1.0 : 0.3,
+    };
 
-  recommend(
-    payload: UserAssessmentPayload,
-    limit = 3,
-  ): readonly ScoredTeaProduct[] {
-    const userVector = matrixToVector(payload.preferences);
+    // คำนวณ Dot Product หาชาที่เข้ากันที่สุด
+    const scoredTeas = lannaTeas.map(tea => {
+      const score = 
+        (userVector.relax * tea.matrix.relaxation) +
+        (userVector.health * tea.matrix.healthBeauty) +
+        (userVector.flavor * tea.matrix.flavorBoldness);
+      return { tea, score };
+    });
 
-    return this.catalog
-      .filter((product) => passesConstraints(product, payload))
-      .map((product) => ({
-        product,
-        score: dotProduct(userVector, matrixToVector(product.matrix)),
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return scoredTeas.sort((a, b) => b.score - a.score).slice(0, limit).map(r => r.tea);
   }
 }

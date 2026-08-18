@@ -1,57 +1,21 @@
-/** Normalized flavor axes (0–1). Same keys used for user prefs and product profiles. */
+// บังคับโครงสร้างให้ตรงกับ UI หน้าบ้านของเรา
 export interface TeaMatrix {
-  floral: number;
-  fruity: number;
-  earthy: number;
-  sweet: number;
-  bitter: number;
-  warming: number;
-  caffeine: number;
+  relaxation: number;
+  healthBeauty: number;
+  flavorBoldness: number;
+  [key: string]: number | undefined; // ทิ้งไว้เผื่อ AI มันใส่แกนอื่นมาจะได้ไม่พัง
 }
 
 export interface TeaProduct {
   id: string;
   name: string;
-  slug: string;
   description: string;
-  origin: string;
   matrix: TeaMatrix;
-  priceCents: number;
-  inventoryCount: number;
-  imageUrl?: string;
-  tags: readonly string[];
+  [key: string]: any; // รองรับข้อมูลจุกจิกเช่น price, stock
 }
 
 export interface UserAssessmentPayload {
-  preferences: TeaMatrix;
-  sessionId?: string;
-  constraints?: {
-    maxPriceCents?: number;
-    inStockOnly?: boolean;
-  };
-}
-
-export const TEA_MATRIX_KEYS = [
-  "floral",
-  "fruity",
-  "earthy",
-  "sweet",
-  "bitter",
-  "warming",
-  "caffeine",
-] as const satisfies readonly (keyof TeaMatrix)[];
-
-export type TeaMatrixKey = (typeof TEA_MATRIX_KEYS)[number];
-
-export interface ScoredTeaProduct {
-  product: TeaProduct;
-  score: number;
-}
-
-export interface RecommendResponse {
-  recommendations: readonly ScoredTeaProduct[];
-  meta: {
-    requestedAt: string;
-    candidateCount: number;
-  };
+  mood: number;
+  taste: number;
+  purpose: number;
 }

@@ -1,60 +1,31 @@
-import { NextResponse } from "next/server";
-import teaCatalog from "@/data/tea-catalog.json";
-import { RecommendationService } from "@/services/recommendation.service";
-import type { RecommendResponse, TeaProduct } from "@/types/tea.types";
-import { Logger } from "@/utils/logger";
-import {
-  formatAssessmentValidationError,
-  parseUserAssessmentPayload,
-} from "@/validators/assessment.validator";
+import { NextResponse } from 'next/server';
+import { RecommendationService } from '@/services/recommendation.service';
+import { parseUserAssessmentPayload } from '@/validators/assessment.validator';
+import { Logger } from '@/utils/logger';
 
-const CONTEXT = "api/recommend";
-
-const catalog = teaCatalog as TeaProduct[];
-const service = new RecommendationService(catalog);
-
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: Request) {
   try {
-    const body: unknown = await request.json();
+    // 1. รับข้อมูลจากหน้าบ้าน
+    const body = await request.json();
+    
+    // 2. ตรวจสอบความถูกต้องของข้อมูล (Zod Validation)
     const payload = parseUserAssessmentPayload(body);
+    Logger.info('API/Recommend', 'Validated payload strictly', payload);
 
-    if (!payload) {
-      const details = formatAssessmentValidationError(body);
-      Logger.warn("Invalid recommendation payload", { details }, CONTEXT);
-      return NextResponse.json(
-        {
-          error: "Invalid request body.",
-          details,
-        },
-        { status: 400 },
-      );
-    }
+    // 3. เรียกใช้งานสมองกลคำนวณ (Logic Layer)
+    const service = new RecommendationService();
+    const topTeas = service.calculateTopTeas(payload);
 
-    const recommendations = service.recommend(payload, 3);
-
-    Logger.info(
-      "Recommendations generated",
-      {
-        sessionId: payload.sessionId,
-        resultCount: recommendations.length,
-      },
-      CONTEXT,
-    );
-
-    const response: RecommendResponse = {
-      recommendations,
-      meta: {
-        requestedAt: new Date().toISOString(),
-        candidateCount: catalog.length,
-      },
-    };
-
-    return NextResponse.json(response);
+    // 4. ส่งผลลัพธ์กลับไปให้หน้าบ้านแสดงผล
+    return NextResponse.json({ success: true, data: topTeas });
+    
   } catch (error) {
-    Logger.error("Recommendation request failed", error, undefined, CONTEXT);
+    // เก็บ Log ไว้เผื่อตรวจสอบเคสย้อนหลัง
+    Logger.error('API/Recommend', 'Failed to process recommendation', error);
+    
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      { success: false, error: 'Internal Server Error or Validation Failed' },
+      { status: 400 }
     );
   }
 }
