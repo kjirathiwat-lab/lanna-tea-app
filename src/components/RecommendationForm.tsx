@@ -7,10 +7,8 @@ import { useGuestProfile } from '@/hooks/useGuestProfile';
 import { UpSaleRecommendation } from './UpSaleRecommendation';
 
 export function RecommendationForm() {
-  // นำเข้าสมองส่วนความจำ
   const { saveProfile } = useGuestProfile();
   
-  // State 
   const [loading, setLoading] = useState<boolean>(false);
   const [results, setResults] = useState<TeaProduct[]>([]);
   const [selectedTea, setSelectedTea] = useState<TeaProduct | null>(null);
@@ -19,20 +17,25 @@ export function RecommendationForm() {
     mood: 1, taste: 1, purpose: 1
   });
 
+  const [showDeepPath, setShowDeepPath] = useState<boolean>(false);
+  const [deepPrompt, setDeepPrompt] = useState<string>('');
+  const [isDeepLoading, setIsDeepLoading] = useState<boolean>(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null); // เพิ่ม State รับคำตอบ AI
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setResults([]);
+    setShowDeepPath(false);
+    setAiResponse(null);
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1500)); 
-      
       const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assessment),
       });
-      
       const data = await response.json();
       
       if (data.success && data.data.length > 0) {
@@ -40,9 +43,39 @@ export function RecommendationForm() {
         saveProfile(assessment, data.data[0].id);
       }
     } catch (error) {
-      console.error('Error fetching recommendations:', error);
+      console.error('Error:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ฟังก์ชันยิง API ไปหา AI Sommelier ตัวจริง
+  const handleDeepSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deepPrompt.trim()) return;
+    
+    setIsDeepLoading(true);
+    setAiResponse(null);
+    
+    try {
+      const response = await fetch('/api/sommelier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: deepPrompt }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAiResponse(data.data); // นำคำตอบ AI มาเก็บไว้โชว์
+        setDeepPrompt('');
+      } else {
+        console.error('AI Error:', data.error);
+      }
+    } catch (error) {
+      console.error('Error in Deep Personalization:', error);
+    } finally {
+      setIsDeepLoading(false);
     }
   };
 
@@ -50,7 +83,6 @@ export function RecommendationForm() {
     <div className="min-h-screen bg-[#F9F6F0] text-[#3E3124] p-8 font-serif selection:bg-amber-200">
       <div className="max-w-3xl mx-auto">
         
-        {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-light tracking-wide text-[#2C3E50] mb-4">
             Lanna & Tribal
@@ -61,12 +93,10 @@ export function RecommendationForm() {
           <div className="w-24 h-[1px] bg-[#D4C4A8] mx-auto mt-6"></div>
         </div>
 
-        {/* 1. Form Section */}
         {!loading && results.length === 0 && (
           <div className="bg-white p-8 md:p-12 rounded-sm shadow-sm border border-[#EBE5D9] relative overflow-hidden animate-fade-in">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8B7355] via-[#D4C4A8] to-[#8B7355]"></div>
             <form onSubmit={handleSubmit} className="space-y-8">
-              
               <div className="space-y-3">
                 <label className="block text-lg text-[#2C3E50]">1. อารมณ์ของคุณในขณะนี้?</label>
                 <select 
@@ -113,7 +143,6 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {/* 2. Loading State Section */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 animate-pulse">
             <div className="w-16 h-16 border-4 border-[#EBE5D9] border-t-[#8B7355] rounded-full animate-spin mb-6"></div>
@@ -122,7 +151,6 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {/* 3. Results Section */}
         {!loading && results.length > 0 && (
           <div className="mt-10 animate-fade-in-up">
             <div className="text-center mb-10">
@@ -158,15 +186,80 @@ export function RecommendationForm() {
               ))}
             </div>
 
-            {/* เพิ่ม Component Up-sale ที่ดึงความจำลูกค้ามาแสดง */}
             <UpSaleRecommendation />
+
+            {/* ส่วน Deep Path ที่อัปเดตให้แสดงผลลัพธ์จาก AI */}
+            {!showDeepPath && !aiResponse ? (
+              <div className="mt-8 text-center animate-fade-in">
+                <button 
+                  onClick={() => setShowDeepPath(true)}
+                  className="text-[#8B7355] text-sm underline hover:text-[#2C3E50] transition-colors italic"
+                >
+                  ไม่พบชาที่ถูกใจ? ขอคำแนะนำเชิงลึก (Deep Personalization)
+                </button>
+              </div>
+            ) : null}
+
+            {/* ฟอร์มรับข้อมูล AI */}
+            {showDeepPath && !aiResponse && (
+              <div className="mt-12 bg-white p-8 border border-[#D4C4A8] animate-fade-in-up">
+                <h3 className="text-2xl font-serif text-[#2C3E50] mb-3">AI Tea Sommelier</h3>
+                <p className="text-[#5C4D3C] text-sm mb-6">
+                  บอกเล่าความรู้สึกของคุณอย่างอิสระ เพื่อให้ผู้เชี่ยวชาญ AI รังสรรค์ชาที่ตอบโจทย์คุณที่สุด
+                </p>
+                <form onSubmit={handleDeepSubmit}>
+                  <textarea
+                    rows={4}
+                    className="w-full p-4 bg-[#FDFCF9] border border-[#EBE5D9] focus:outline-none focus:border-[#8B7355] text-[#5C4D3C] resize-none mb-4"
+                    placeholder="เช่น วันนี้ประชุมหนักมาก รู้สึกเหนื่อยล้า อยากได้ชาที่ดื่มแล้วตาสว่างแต่ไม่ทำให้ใจสั่น..."
+                    value={deepPrompt}
+                    onChange={(e) => setDeepPrompt(e.target.value)}
+                  />
+                  <div className="flex gap-4">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowDeepPath(false)}
+                      className="px-6 py-3 border border-[#2C3E50] text-[#2C3E50] uppercase tracking-widest text-xs hover:bg-[#F9F6F0] transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isDeepLoading || !deepPrompt.trim()}
+                      className="flex-1 px-6 py-3 bg-[#2C3E50] text-[#F9F6F0] uppercase tracking-widest text-xs hover:bg-[#1A252F] transition-colors disabled:opacity-50"
+                    >
+                      {isDeepLoading ? 'กำลังปรึกษาผู้เชี่ยวชาญ...' : 'ขอคำแนะนำจาก AI'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* แสดงคำตอบที่ได้จาก AI */}
+            {aiResponse && (
+              <div className="mt-12 bg-[#2C3E50] text-[#F9F6F0] p-8 md:p-10 relative overflow-hidden animate-fade-in-up">
+                <div className="absolute top-0 right-0 w-40 h-40 border border-[#8B7355] rounded-full opacity-20 -mr-10 -mt-10"></div>
+                <h3 className="text-2xl font-serif text-[#D4C4A8] mb-4">The Sommelier's Recommendation</h3>
+                <div className="prose prose-invert prose-p:text-[#EBE5D9] prose-p:leading-relaxed max-w-none">
+                  {/* แสดงข้อความที่ได้จาก AI โดยจัดการบรรทัดใหม่ให้สวยงาม */}
+                  {aiResponse.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2">{line}</p>
+                  ))}
+                </div>
+                <div className="mt-8 text-center">
+                   <button 
+                    onClick={() => { setAiResponse(null); setShowDeepPath(true); setDeepPrompt(''); }}
+                    className="text-[#D4C4A8] text-sm underline hover:text-white transition-colors"
+                  >
+                    ปรึกษาเรื่องอื่นเพิ่มเติม
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="mt-12 flex justify-center gap-4">
               <button onClick={() => setResults([])} className="px-8 py-3 border border-[#2C3E50] text-[#2C3E50] uppercase tracking-widest text-xs hover:bg-[#2C3E50] hover:text-[#F9F6F0] transition-colors">
                 เริ่มประเมินใหม่
-              </button>
-              <button className="px-8 py-3 bg-[#2C3E50] text-[#F9F6F0] uppercase tracking-widest text-xs hover:bg-[#1A252F] transition-colors shadow-sm">
-                สั่งซื้อเมนูนี้
               </button>
             </div>
           </div>
