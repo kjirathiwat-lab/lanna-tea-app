@@ -3,9 +3,12 @@
 import React, { useState } from 'react';
 import { useGuestProfile } from '@/hooks/useGuestProfile';
 import { RecommendationResult, TeaProduct, UserAssessmentPayload } from '@/types/tea.types';
+import { CartItem } from '@/types/order.types';
 import { Logger } from '@/utils/logger';
+import { TEA_CATALOG } from '@/services/recommendation.service';
 import { UpSaleRecommendation } from './UpSaleRecommendation';
 import { TeaDetailsModal } from './TeaDetailsModal';
+import { CartDrawer } from './CartDrawer';
 
 const MOOD_OPTIONS = [
   { value: 'ต้องการความสงบและผ่อนคลายจากความวุ่นวาย', label: 'ต้องการความสงบและผ่อนคลายจากความวุ่นวาย' },
@@ -31,25 +34,60 @@ const PURPOSE_OPTIONS = [
 export function RecommendationForm() {
   const { profile, isLoaded, isReturningGuest, recordVisitAndOrder } = useGuestProfile();
 
-  // Form State
   const [mood, setMood] = useState<string>(MOOD_OPTIONS[0].value);
   const [taste, setTaste] = useState<string>(TASTE_OPTIONS[0].value);
   const [purpose, setPurpose] = useState<string>(PURPOSE_OPTIONS[0].value);
 
-  // Flow & Interaction State
   const [loading, setLoading] = useState<boolean>(false);
   const [results, setResults] = useState<RecommendationResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTea, setSelectedTea] = useState<TeaProduct | null>(null);
 
-  // Hybrid Flow State (AI Sommelier Deep Dive)
+  // Cart State
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
+
+  // Modal State
+  const [detailTea, setDetailTea] = useState<TeaProduct | null>(null);
+
+  // AI Sommelier State
   const [showDeepDive, setShowDeepDive] = useState<boolean>(false);
   const [deepDivePrompt, setDeepDivePrompt] = useState<string>('');
   const [deepDiveResult, setDeepDiveResult] = useState<string | null>(null);
   const [deepDiveLoading, setDeepDiveLoading] = useState<boolean>(false);
   const [deepDiveError, setDeepDiveError] = useState<string | null>(null);
 
-  // 1. Submit Quick Match (Phase 1)
+  const addToCart = (item: CartItem) => {
+    setCartItems((prev) => {
+      const exists = prev.find((i) => i.id === item.id);
+      if (exists) {
+        return prev.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
+      }
+      return [...prev, item];
+    });
+    setIsCartOpen(true);
+    setOrderSuccess(false);
+    Logger.info('Item added to cart', { itemId: item.id, itemTitle: item.title }, 'UI/RecommendationForm');
+  };
+
+  const handleUpdateQty = (id: string, delta: number) => {
+    setCartItems((prev) =>
+      prev
+        .map((item) => (item.id === id ? { ...item, quantity: item.quantity + delta } : item))
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
+  const handleCheckout = () => {
+    const payload: UserAssessmentPayload = { mood, taste, purpose };
+    const firstTea = TEA_CATALOG.find((t) => cartItems.some((ci) => ci.id === t.id || ci.id === t.code));
+    recordVisitAndOrder(payload, firstTea);
+    setCartItems([]);
+    setIsCartOpen(false);
+    setOrderSuccess(true);
+    Logger.info('Order successfully submitted from Cart', undefined, 'UI/RecommendationForm');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,11 +108,6 @@ export function RecommendationForm() {
       }
 
       setResults(json.data);
-
-      if (json.data.length > 0) {
-        recordVisitAndOrder(payload, json.data[0].tea);
-      }
-
       Logger.info('Recommendation calculated successfully', { count: json.data.length }, 'UI/RecommendationForm');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผล';
@@ -85,7 +118,6 @@ export function RecommendationForm() {
     }
   };
 
-  // 2. Submit Deep Dive AI Sommelier (Phase 3)
   const handleDeepDiveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deepDivePrompt.trim() || deepDiveLoading) return;
@@ -117,6 +149,10 @@ export function RecommendationForm() {
     }
   };
 
+  const detectedTeaFromAI = deepDiveResult
+    ? TEA_CATALOG.find((t) => deepDiveResult.includes(t.code) || deepDiveResult.includes(t.name) || deepDiveResult.includes(t.thaiName))
+    : null;
+
   const handleReset = () => {
     setResults([]);
     setShowDeepDive(false);
@@ -124,21 +160,38 @@ export function RecommendationForm() {
     setDeepDiveError(null);
     setDeepDivePrompt('');
     setDeepDiveLoading(false);
+    setOrderSuccess(false);
     setError(null);
   };
 
+  const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <div className="w-full font-serif text-stone-800">
-      {/* Header Banner */}
-      <div className="bg-black text-white text-center py-5 px-4 mb-8 shadow-sm">
-        <h2 className="text-2xl font-bold tracking-wide">Lanna Tea</h2>
-        <p className="text-xs text-stone-400 mt-1 tracking-wider">
-          Discover teas from Northern Thailand, matched to your taste.
-        </p>
+    <div className="w-full font-serif text-stone-800 relative">
+      {/* Header Banner & Cart Access */}
+      <div className="bg-black text-white py-5 px-6 mb-8 shadow-sm flex justify-between items-center">
+        <div className="w-16" />
+        <div className="text-center">
+          <h2 className="text-2xl font-bold tracking-wide">Lanna Tea</h2>
+          <p className="text-xs text-stone-400 mt-1 tracking-wider">
+            Discover teas from Northern Thailand, matched to your taste.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          className="relative text-stone-300 hover:text-white p-2 text-xs font-sans flex items-center gap-2 border border-stone-700 px-3 py-1.5 cursor-pointer"
+        >
+          <span>ตะกร้า</span>
+          {totalCartCount > 0 && (
+            <span className="bg-[#8C7355] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold font-sans">
+              {totalCartCount}
+            </span>
+          )}
+        </button>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pb-16">
-        {/* Brand Title */}
         <div className="text-center mb-6">
           <h1 className="text-3xl sm:text-4xl font-normal text-slate-800 tracking-tight">
             Lanna & Tribal
@@ -149,7 +202,17 @@ export function RecommendationForm() {
           <div className="w-16 h-px bg-stone-300 mx-auto mt-4" />
         </div>
 
-        {/* Anonymous Personalization Greeting */}
+        {orderSuccess && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-300 text-center space-y-1">
+            <p className="text-sm font-medium text-emerald-900">
+              รับรายการสั่งซื้อเข้าสู่ Tea Master เรียบร้อยแล้ว
+            </p>
+            <p className="text-xs text-emerald-700">
+              เครื่องดื่มและของว่างของท่านกำลังถูกรังสรรค์อย่างประณีต
+            </p>
+          </div>
+        )}
+
         {isLoaded && isReturningGuest && profile?.lastOrderedTea && results.length === 0 && (
           <div className="mb-6 p-4 bg-[#F5F2EB] border border-[#D9D2C5] text-center space-y-1">
             <p className="text-xs font-sans uppercase tracking-widest text-[#8C7355]">
@@ -161,7 +224,6 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {/* State 1: Choice Selection Form (Quick Match) */}
         {results.length === 0 ? (
           <div className="bg-[#FAF8F5] border border-stone-200/80 p-8 shadow-sm border-t-2 border-t-[#8C7355]">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -176,14 +238,10 @@ export function RecommendationForm() {
                     className="w-full p-3 bg-white border border-stone-300 text-sm text-stone-800 focus:outline-none focus:border-stone-600 appearance-none cursor-pointer pr-10"
                   >
                     {MOOD_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">
-                    ▼
-                  </div>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">▼</div>
                 </div>
               </div>
 
@@ -198,14 +256,10 @@ export function RecommendationForm() {
                     className="w-full p-3 bg-white border border-stone-300 text-sm text-stone-800 focus:outline-none focus:border-stone-600 appearance-none cursor-pointer pr-10"
                   >
                     {TASTE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">
-                    ▼
-                  </div>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">▼</div>
                 </div>
               </div>
 
@@ -220,45 +274,34 @@ export function RecommendationForm() {
                     className="w-full p-3 bg-white border border-stone-300 text-sm text-stone-800 focus:outline-none focus:border-stone-600 appearance-none cursor-pointer pr-10"
                   >
                     {PURPOSE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">
-                    ▼
-                  </div>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-stone-500">▼</div>
                 </div>
               </div>
 
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">
-                  {error}
-                </div>
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">{error}</div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-[#25323D] hover:bg-[#1B252D] text-white text-sm font-sans tracking-wide transition duration-150 disabled:opacity-50"
+                className="w-full py-3.5 bg-[#25323D] hover:bg-[#1B252D] text-white text-sm font-sans tracking-wide transition duration-150 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? 'กำลังรังสรรค์เมนูชา...' : 'รับการรังสรรค์เมนูชา'}
               </button>
             </form>
           </div>
         ) : (
-          /* State 2: Results Display + Up-Sale + Hybrid Deep Dive */
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-normal text-slate-800">
-                Lanna Tea Selections
-              </h2>
-              <p className="text-xs text-stone-500 mt-1">
-                ชาที่รังสรรค์มาเพื่อคุณโดยเฉพาะ
-              </p>
+              <h2 className="text-2xl font-normal text-slate-800">Lanna Tea Selections</h2>
+              <p className="text-xs text-stone-500 mt-1">ชาที่รังสรรค์มาเพื่อคุณโดยเฉพาะ</p>
             </div>
 
-            {/* Tea Cards */}
+            {/* Top 3 Tea Selections */}
             <div className="space-y-4">
               {results.map((item, idx) => {
                 const displayRate = item.matchPercentage || Math.min(99, Math.max(80, 99 - idx * 5));
@@ -270,80 +313,84 @@ export function RecommendationForm() {
                   >
                     <div className="space-y-1 max-w-md">
                       <div className="flex items-baseline gap-2">
-                        <span className="italic text-stone-500 text-sm">
-                          No. {idx + 1}
-                        </span>
-                        <h3 className="text-lg font-medium text-slate-900">
-                          {item.tea.name}
-                        </h3>
+                        <span className="italic text-stone-500 text-sm">No. {idx + 1}</span>
+                        <h3 className="text-lg font-medium text-slate-900">{item.tea.name}</h3>
                       </div>
-                      <p className="text-xs text-stone-600 leading-relaxed">
-                        {item.tea.description || item.tea.story}
-                      </p>
+                      <p className="text-xs text-stone-600 leading-relaxed">{item.tea.description || item.tea.story}</p>
                     </div>
 
-                    <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-stone-200">
+                    <div className="sm:text-right flex sm:flex-col justify-between items-center sm:items-end w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-stone-200 gap-2">
                       <div>
-                        <div className="text-[10px] tracking-widest text-stone-400 uppercase font-sans">
-                          MATCH RATE
-                        </div>
-                        <div className="text-xl font-light text-slate-800">
-                          {displayRate}%
-                        </div>
+                        <div className="text-[10px] tracking-widest text-stone-400 uppercase font-sans">MATCH RATE</div>
+                        <div className="text-xl font-light text-slate-800">{displayRate}%</div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTea(item.tea)}
-                        className="text-xs text-stone-700 underline hover:text-black mt-2 font-sans"
-                      >
-                        ดูรายละเอียด
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDetailTea(item.tea)}
+                          className="text-xs text-stone-700 underline hover:text-black font-sans cursor-pointer"
+                        >
+                          ดูรายละเอียด
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addToCart({
+                              id: item.tea.id || item.tea.code,
+                              title: item.tea.name,
+                              thaiTitle: item.tea.thaiName,
+                              priceCents: item.tea.priceCents || 22000,
+                              quantity: 1,
+                              type: 'Tea',
+                            })
+                          }
+                          className="px-3 py-1 bg-[#25323D] hover:bg-black text-white text-xs font-sans tracking-wide transition cursor-pointer"
+                        >
+                          + เพิ่มลงตะกร้า
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Up-Sale Component */}
+            {/* Up-Sale Pairing (ต่อเข้า Cart ทันที) */}
             {results.length > 0 && (
               <div className="mt-6">
-                <UpSaleRecommendation primaryTea={results[0].tea} />
+                <UpSaleRecommendation
+                  primaryTea={results[0].tea}
+                  onAddToCart={addToCart}
+                />
               </div>
             )}
 
             {/* Hybrid Deep-Dive Trigger */}
             {!showDeepDive ? (
               <div className="text-center pt-4 border-t border-stone-200">
-                <p className="text-xs text-stone-500 mb-3">
-                  ยังไม่ตรงใจ หรือต้องการรสชาติที่เฉพาะเจาะจงเป็นพิเศษ?
-                </p>
+                <p className="text-xs text-stone-500 mb-3">ยังไม่ตรงใจ หรือต้องการรสชาติที่เฉพาะเจาะจงเป็นพิเศษ?</p>
                 <button
                   type="button"
                   onClick={() => setShowDeepDive(true)}
-                  className="px-5 py-2 bg-[#8C7355] hover:bg-[#735C42] text-white text-xs tracking-wider uppercase font-sans transition"
+                  className="px-5 py-2 bg-[#8C7355] hover:bg-[#735C42] text-white text-xs tracking-wider uppercase font-sans transition cursor-pointer"
                 >
                   ปรึกษา AI Tea Sommelier แบบเจาะลึก
                 </button>
               </div>
             ) : (
-              /* Deep-Dive AI Sommelier Chat Section */
               <div className="mt-8 p-6 bg-stone-50 border border-stone-300 space-y-4">
-                <h4 className="text-base font-medium text-slate-900">
-                  AI Tea Sommelier Consultation (คำปรึกษาเจาะลึก)
-                </h4>
+                <h4 className="text-base font-medium text-slate-900">AI Tea Sommelier Consultation (คำปรึกษาเจาะลึก)</h4>
                 <form onSubmit={handleDeepDiveSubmit} className="space-y-3">
                   <textarea
                     value={deepDivePrompt}
                     onChange={(e) => setDeepDivePrompt(e.target.value)}
-                    placeholder="ระบุความต้องการเพิ่มเติม เช่น อยากได้ชาที่มีกลิ่นควันไม้เล็กน้อย หรือต้องการดื่มหลังมื้ออาหารหนัก..."
+                    placeholder="ระบุความต้องการเพิ่มเติม เช่น อยากได้ชาที่มีรสหวานน้อย กลิ่นมะลิ หรืออยากได้ของทานเล่น..."
                     className="w-full p-3 bg-white border border-stone-300 text-xs text-stone-800 focus:outline-none focus:border-stone-600 h-24"
                     maxLength={300}
                     required
                   />
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-stone-400">
-                      {deepDivePrompt.length}/300 ตัวอักษร
-                    </span>
+                    <span className="text-[10px] text-stone-400">{deepDivePrompt.length}/300 ตัวอักษร</span>
                     <button
                       type="submit"
                       disabled={deepDiveLoading || !deepDivePrompt.trim()}
@@ -355,28 +402,49 @@ export function RecommendationForm() {
                 </form>
 
                 {deepDiveError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">
-                    {deepDiveError}
-                  </div>
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">{deepDiveError}</div>
                 )}
 
                 {deepDiveResult && (
-                  <div className="mt-4 p-4 bg-white border-l-2 border-[#8C7355] text-xs text-stone-700 leading-relaxed whitespace-pre-line">
-                    <div className="font-semibold text-stone-900 mb-1">
-                      คำแนะนำจาก Sommelier:
+                  <div className="mt-4 p-5 bg-white border-l-2 border-[#8C7355] text-xs text-stone-700 leading-relaxed whitespace-pre-line space-y-4">
+                    <div>
+                      <div className="font-semibold text-stone-900 mb-1">คำแนะนำจาก Sommelier:</div>
+                      {deepDiveResult}
                     </div>
-                    {deepDiveResult}
+
+                    {detectedTeaFromAI && (
+                      <div className="pt-3 border-t border-stone-200 flex justify-between items-center">
+                        <span className="font-sans font-medium text-stone-900">
+                          {detectedTeaFromAI.thaiName} (฿{((detectedTeaFromAI.priceCents || 22000) / 100).toFixed(0)})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addToCart({
+                              id: detectedTeaFromAI.id || detectedTeaFromAI.code,
+                              title: detectedTeaFromAI.name,
+                              thaiTitle: detectedTeaFromAI.thaiName,
+                              priceCents: detectedTeaFromAI.priceCents || 22000,
+                              quantity: 1,
+                              type: 'Tea',
+                            })
+                          }
+                          className="px-4 py-2 bg-[#8C7355] hover:bg-[#705c43] text-white text-xs font-sans uppercase tracking-wider transition cursor-pointer"
+                        >
+                          + เพิ่มเมนูนี้ลงตะกร้า
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Reset Button */}
             <div className="text-center pt-6">
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-6 py-2.5 border border-stone-400 text-xs tracking-wider uppercase font-sans text-stone-700 hover:bg-stone-100 transition"
+                className="px-6 py-2.5 border border-stone-400 text-xs tracking-wider uppercase font-sans text-stone-700 hover:bg-stone-100 transition cursor-pointer"
               >
                 ค้นหาใหม่อีกครั้ง
               </button>
@@ -385,12 +453,19 @@ export function RecommendationForm() {
         )}
       </div>
 
-      {/* Modal View Details */}
-      {selectedTea && (
+      <CartDrawer
+        isOpen={isCartOpen}
+        items={cartItems}
+        onClose={() => setIsCartOpen(false)}
+        onUpdateQty={handleUpdateQty}
+        onCheckout={handleCheckout}
+      />
+
+      {detailTea && (
         <TeaDetailsModal
-          tea={selectedTea}
-          isOpen={!!selectedTea}
-          onClose={() => setSelectedTea(null)}
+          tea={detailTea}
+          isOpen={!!detailTea}
+          onClose={() => setDetailTea(null)}
         />
       )}
     </div>
