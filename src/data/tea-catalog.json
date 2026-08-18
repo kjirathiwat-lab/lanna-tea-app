@@ -1,0 +1,192 @@
+[
+  {
+    "id": "lanna-jasmine-green",
+    "name": "Lanna Jasmine Green",
+    "slug": "lanna-jasmine-green",
+    "description": "Delicate green tea scented with night-blooming jasmine from Chiang Mai valleys.",
+    "origin": "Chiang Mai, Thailand",
+    "matrix": {
+      "floral": 0.9,
+      "fruity": 0.2,
+      "earthy": 0.3,
+      "sweet": 0.6,
+      "bitter": 0.2,
+      "warming": 0.3,
+      "caffeine": 0.5
+    },
+    "priceCents": 1299,
+    "inventoryCount": 48,
+    "tags": ["green", "floral", "jasmine"]
+  },
+  {
+    "id": "lanna-oolong-hills",
+    "name": "Lanna Oolong Hills",
+    "slug": "lanna-oolong-hills",
+    "description": "Semi-oxidized oolong with honeyed orchid notes and a smooth, lingering finish.",
+    "origin": "Doi Mae Salong, Thailand",
+    "matrix": {
+      "floral": 0.7,
+      "fruity": 0.5,
+      "earthy": 0.4,
+      "sweet": 0.7,
+      "bitter": 0.3,
+      "warming": 0.5,
+      "caffeine": 0.6
+    },
+    "priceCents": 1599,
+    "inventoryCount": 32,
+    "tags": ["oolong", "floral", "sweet"]
+  },
+  {
+    "id": "lanna-ginger-turmeric",
+    "name": "Lanna Ginger Turmeric",
+    "slug": "lanna-ginger-turmeric",
+    "description": "Warming herbal blend of fresh ginger root and golden turmeric for calm evenings.",
+    "origin": "Lampang, Thailand",
+    "matrix": {
+      "floral": 0.1,
+      "fruity": 0.2,
+      "earthy": 0.6,
+      "sweet": 0.4,
+      "bitter": 0.3,
+      "warming": 0.95,
+      "caffeine": 0.0
+    },
+    "priceCents": 999,
+    "inventoryCount": 64,
+    "tags": ["herbal", "warming", "caffeine-free"]
+  },
+  {
+    "id": "lanna-mountain-black",
+    "name": "Lanna Mountain Black",
+    "slug": "lanna-mountain-black",
+    "description": "Full-bodied black tea with malty depth and subtle cocoa undertones.",
+    "origin": "Chiang Rai, Thailand",
+    "matrix": {
+      "floral": 0.2,
+      "fruity": 0.3,
+      "earthy": 0.7,
+      "sweet": 0.5,
+      "bitter": 0.6,
+      "warming": 0.7,
+      "caffeine": 0.85
+    },
+    "priceCents": 1199,
+    "inventoryCount": 41,
+    "tags": ["black", "bold", "morning"]
+  },
+  {
+    "id": "lanna-lychee-white",
+    "name": "Lanna Lychee White",
+    "slug": "lanna-lychee-white",
+    "description": "Silky white tea infused with sun-dried lychee for a bright, tropical cup.",
+    "origin": "Nan Province, Thailand",
+    "matrix": {
+      "floral": 0.5,
+      "fruity": 0.95,
+      "earthy": 0.2,
+      "sweet": 0.8,
+      "bitter": 0.1,
+      "warming": 0.2,
+      "caffeine": 0.3
+    },
+    "priceCents": 1499,
+    "inventoryCount": 27,
+    "tags": ["white", "fruity", "lychee"]
+  },
+  {
+    "id": "lanna-chrysanthemum-pu-erh",
+    "name": "Lanna Chrysanthemum Pu-erh",
+    "slug": "lanna-chrysanthemum-pu-erh",
+    "description": "Aged pu-erh pressed with chrysanthemum petals for earthy floral complexity.",
+    "origin": "Mae Hong Son, Thailand",
+    "matrix": {
+      "floral": 0.6,
+      "fruity": 0.2,
+      "earthy": 0.9,
+      "sweet": 0.4,
+      "bitter": 0.5,
+      "warming": 0.6,
+      "caffeine": 0.55
+    },
+    "priceCents": 1799,
+    "inventoryCount": 18,
+    "tags": ["pu-erh", "earthy", "aged"]
+  },
+  {
+    "id": "lanna-lemon-grass-cool",
+    "name": "Lanna Lemongrass Cool",
+    "slug": "lanna-lemon-grass-cool",
+    "description": "Refreshing lemongrass and pandan tisane ideal for hot afternoons.",
+    "origin": "Phrae, Thailand",
+    "matrix": {
+      "floral": 0.3,
+      "fruity": 0.7,
+      "earthy": 0.3,
+      "sweet": 0.5,
+      "bitter": 0.1,
+      "warming": 0.2,
+      "caffeine": 0.0
+    },
+    "priceCents": 899,
+    "inventoryCount": 55,
+    "tags": ["herbal", "citrus", "caffeine-free"]
+  },
+  {
+    "id": "lanna-rose-silver-needle",
+    "name": "Lanna Rose Silver Needle",
+    "slug": "lanna-rose-silver-needle",
+    "description": "Premium silver needle buds lightly kissed with organic rose petals.",
+    "origin": "Chiang Mai, Thailand",
+    "matrix": {
+      "floral": 0.95,
+      "fruity": 0.3,
+      "earthy": 0.15,
+      "sweet": 0.65,
+      "bitter": 0.15,
+      "warming": 0.25,
+      "caffeine": 0.35
+    },
+    "priceCents": 2199,
+    "inventoryCount": 12,
+    "tags": ["white", "floral", "premium"]
+  },
+  {
+    "id": "lanna-spiced-chai",
+    "name": "Lanna Spiced Chai",
+    "slug": "lanna-spiced-chai",
+    "description": "Assam-style base with cardamom, star anise, and Thai cinnamon bark.",
+    "origin": "Chiang Mai, Thailand",
+    "matrix": {
+      "floral": 0.2,
+      "fruity": 0.25,
+      "earthy": 0.5,
+      "sweet": 0.55,
+      "bitter": 0.45,
+      "warming": 0.9,
+      "caffeine": 0.75
+    },
+    "priceCents": 1099,
+    "inventoryCount": 38,
+    "tags": ["chai", "spiced", "black"]
+  },
+  {
+    "id": "lanna-mango-sticky-rice",
+    "name": "Lanna Mango Sticky Rice",
+    "slug": "lanna-mango-sticky-rice",
+    "description": "Dessert-inspired blend evoking mango, coconut, and glutinous rice sweetness.",
+    "origin": "Chiang Mai, Thailand",
+    "matrix": {
+      "floral": 0.25,
+      "fruity": 0.85,
+      "earthy": 0.2,
+      "sweet": 0.95,
+      "bitter": 0.1,
+      "warming": 0.4,
+      "caffeine": 0.2
+    },
+    "priceCents": 1399,
+    "inventoryCount": 0,
+    "tags": ["blend", "fruity", "dessert"]
+  }
+]
