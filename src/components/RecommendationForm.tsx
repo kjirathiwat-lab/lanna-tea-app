@@ -3,9 +3,15 @@
 import React, { useState } from 'react';
 import { TeaProduct, UserAssessmentPayload } from '@/types/tea.types';
 import { TeaDetailsModal } from './TeaDetailsModal';
+import { useGuestProfile } from '@/hooks/useGuestProfile';
+import { UpSaleRecommendation } from './UpSaleRecommendation';
 
 export function RecommendationForm() {
-  const [loading, setLoading] = useState(false);
+  // นำเข้าสมองส่วนความจำ
+  const { saveProfile } = useGuestProfile();
+  
+  // State 
+  const [loading, setLoading] = useState<boolean>(false);
   const [results, setResults] = useState<TeaProduct[]>([]);
   const [selectedTea, setSelectedTea] = useState<TeaProduct | null>(null);
   
@@ -16,10 +22,9 @@ export function RecommendationForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setResults([]); // เคลียร์ผลลัพธ์เก่าก่อน
+    setResults([]);
     
     try {
-      // หน่วงเวลาจำลอง 1.5 วินาทีให้แอนิเมชัน Loading ทำงาน (เดี๋ยวเอาออกตอนใช้งานจริง)
       await new Promise(resolve => setTimeout(resolve, 1500)); 
       
       const response = await fetch('/api/recommend', {
@@ -27,12 +32,15 @@ export function RecommendationForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assessment),
       });
+      
       const data = await response.json();
-      if (data.success) {
+      
+      if (data.success && data.data.length > 0) {
         setResults(data.data);
+        saveProfile(assessment, data.data[0].id);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching recommendations:', error);
     } finally {
       setLoading(false);
     }
@@ -53,12 +61,12 @@ export function RecommendationForm() {
           <div className="w-24 h-[1px] bg-[#D4C4A8] mx-auto mt-6"></div>
         </div>
 
-        {/* Form Section */}
+        {/* 1. Form Section */}
         {!loading && results.length === 0 && (
           <div className="bg-white p-8 md:p-12 rounded-sm shadow-sm border border-[#EBE5D9] relative overflow-hidden animate-fade-in">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8B7355] via-[#D4C4A8] to-[#8B7355]"></div>
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* คำถามที่ 1 */}
+              
               <div className="space-y-3">
                 <label className="block text-lg text-[#2C3E50]">1. อารมณ์ของคุณในขณะนี้?</label>
                 <select 
@@ -72,7 +80,6 @@ export function RecommendationForm() {
                 </select>
               </div>
 
-              {/* คำถามที่ 2 */}
               <div className="space-y-3">
                 <label className="block text-lg text-[#2C3E50]">2. โทนรสชาติที่ปรารถนา?</label>
                 <select 
@@ -86,7 +93,6 @@ export function RecommendationForm() {
                 </select>
               </div>
 
-              {/* คำถามที่ 3 */}
               <div className="space-y-3">
                 <label className="block text-lg text-[#2C3E50]">3. สิ่งที่อยากให้ชาแก้วนี้มอบให้?</label>
                 <select 
@@ -107,7 +113,7 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {/* Loading State Section */}
+        {/* 2. Loading State Section */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 animate-pulse">
             <div className="w-16 h-16 border-4 border-[#EBE5D9] border-t-[#8B7355] rounded-full animate-spin mb-6"></div>
@@ -116,7 +122,7 @@ export function RecommendationForm() {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* 3. Results Section */}
         {!loading && results.length > 0 && (
           <div className="mt-10 animate-fade-in-up">
             <div className="text-center mb-10">
@@ -152,6 +158,9 @@ export function RecommendationForm() {
               ))}
             </div>
 
+            {/* เพิ่ม Component Up-sale ที่ดึงความจำลูกค้ามาแสดง */}
+            <UpSaleRecommendation />
+
             <div className="mt-12 flex justify-center gap-4">
               <button onClick={() => setResults([])} className="px-8 py-3 border border-[#2C3E50] text-[#2C3E50] uppercase tracking-widest text-xs hover:bg-[#2C3E50] hover:text-[#F9F6F0] transition-colors">
                 เริ่มประเมินใหม่
@@ -164,7 +173,6 @@ export function RecommendationForm() {
         )}
       </div>
 
-      {/* Render Modal */}
       <TeaDetailsModal 
         isOpen={selectedTea !== null} 
         onClose={() => setSelectedTea(null)} 
